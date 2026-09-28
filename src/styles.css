@@ -1,0 +1,17 @@
+/* ──────────────────────────────────────────────────────────────
+   dist/styles.css болж гарна — бүх компонентын бэлэн CSS.
+   Импортлох төсөлд Tailwind суулгах шаардлагагүй:
+
+       import "mongol-aiva-ui/styles.css";
+
+   source(none) + @source — зөвхөн компонентуудын классыг гаргана.
+   Үгүй бол showcase/-ийн классууд ч dist-д орж ирнэ.
+
+   Tailwind-ийн CSS reset (preflight) энд багтсан, гэхдээ @layer base
+   дотор байгаа тул импортлосон төслийн өөрийн CSS үргэлж давамгайлна.
+   ────────────────────────────────────────────────────────────── */
+
+@import "tailwindcss" source(none);
+@import "./theme.css";
+
+@source "./components";

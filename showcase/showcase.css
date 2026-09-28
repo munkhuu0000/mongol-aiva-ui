@@ -1,0 +1,10 @@
+/* ──────────────────────────────────────────────────────────────
+   Зөвхөн showcase-д. src/styles.css нь source(none) тул showcase/-ийн
+   классуудыг гаргадаггүй — энд Tailwind-ийг хоёуланг нь уншуулна.
+   ────────────────────────────────────────────────────────────── */
+
+@import "tailwindcss" source(none);
+@import "../src/theme.css";
+
+@source "./";
+@source "../src/components";

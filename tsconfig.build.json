@@ -1,0 +1,12 @@
+{
+  // Зөвхөн src/-ийн төрлийн тайлбар (.d.ts) гаргана — JS-ийг Vite бүтээдэг.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "dist/types"
+  },
+  "include": ["src"]
+}
