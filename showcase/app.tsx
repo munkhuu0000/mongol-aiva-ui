@@ -32,12 +32,9 @@ import {
   type EventType,
 } from "../src";
 
-// UbCam-ийн VSS (MediaMTX). Өөр машин дээр бол HOST-ыг л солино.
-const HOST = "192.168.1.27";
-const ENDPOINTS = {
-  whepBase: `http://${HOST}:7889`,
-  hlsBase: `http://${HOST}:7888`,
-};
+// Үзүүлэн нийтийн сайт дээр байрладаг тул дотоод VSS руу холбогдох
+// боломжгүй — оронд нь жишээ бичлэг (сток, чөлөөт лиценз) тоглуулна.
+import demoClip from "./assets/demo.mp4";
 
 // UbCam/data/cameras.json + офлайн төлөв харуулах жишээ нэг.
 const CAMERAS: Camera[] = [
@@ -450,13 +447,18 @@ export function App() {
           <Section
             id="camera"
             title="Камер"
-            description={`Шууд видео — эхлээд WebRTC, бүтэхгүй бол HLS. Видео ${HOST}-ийн MediaMTX-ээс ирнэ; сервер асаагүй бол алдааны төлөв харагдана.`}
+            description="Шууд видео — эхлээд WebRTC, бүтэхгүй бол HLS. Энд жишээ бичлэг (src) тоглож байна; шууд урсгал VSS-тэй сүлжээнд л ажиллана."
             imports={["CameraPlayer"]}
           >
             <Group title="CameraPlayer — жагсаалтаас камер сонго">
               <Specimen
                 wide
-                code={`<CameraPlayer camera={camera} whepBase="http://${HOST}:7889" hlsBase="http://${HOST}:7888" />`}
+                code={
+                  `// Шууд урсгал (MediaMTX / VSS)\n` +
+                  `<CameraPlayer camera={camera} whepBase="http://<vss-хост>:7889" hlsBase="http://<vss-хост>:7888" />\n\n` +
+                  `// Бичлэг\n` +
+                  `<CameraPlayer camera={camera} src="/clips/cam-1.mp4" />`
+                }
               >
                 <div className="grid gap-4 md:grid-cols-[240px_1fr]">
                   <div className="flex flex-col gap-1">
@@ -480,7 +482,7 @@ export function App() {
                   </div>
 
                   <Card className="min-h-72 overflow-hidden">
-                    <CameraPlayer camera={selected} {...ENDPOINTS} />
+                    <CameraPlayer camera={selected} src={demoClip} />
                   </Card>
                 </div>
               </Specimen>

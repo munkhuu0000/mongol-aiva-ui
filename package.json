@@ -24,6 +24,7 @@
     "prepare": "npm run build",
     "dev": "vite",
     "build": "vite build && cp src/theme.css dist/theme.css && tsc -p tsconfig.build.json",
+    "build:showcase": "vite build --mode showcase",
     "watch": "vite build --watch",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "oxlint"

@@ -17,7 +17,7 @@ const external = [
   ...Object.keys(pkg.peerDependencies),
 ];
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
 
   // `npm run dev` → компонентын үзүүлэн (showcase/). 3100 = UbCam.
@@ -26,17 +26,26 @@ export default defineConfig({
     port: 3200,
   },
 
-  // `npm run build` → бусад төсөл импортлох dist/.
-  build: {
-    lib: {
-      entry: fileURLToPath(new URL("./src/index.ts", import.meta.url)),
-      formats: ["es"],
-      fileName: "index",
-      cssFileName: "styles",
-    },
-    rolldownOptions: {
-      external: (id) =>
-        external.some((dep) => id === dep || id.startsWith(`${dep}/`)),
-    },
-  },
-});
+  ...(mode === "showcase"
+    ? {
+        // `npm run build:showcase` → үзүүлэнг энгийн вэб сайт болгоно
+        // (GitHub Pages). "./" — сайт ямар замд байрлахаас үл хамаарна.
+        base: "./",
+        build: { outDir: "showcase-dist" },
+      }
+    : {
+        // `npm run build` → бусад төсөл импортлох dist/.
+        build: {
+          lib: {
+            entry: fileURLToPath(new URL("./src/index.ts", import.meta.url)),
+            formats: ["es"],
+            fileName: "index",
+            cssFileName: "styles",
+          },
+          rolldownOptions: {
+            external: (id: string) =>
+              external.some((dep) => id === dep || id.startsWith(`${dep}/`)),
+          },
+        },
+      }),
+}));

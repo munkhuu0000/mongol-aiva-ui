@@ -23,6 +23,11 @@ type CameraPlayerProps = React.ComponentProps<"div"> &
     camera: Camera | null;
     /** Камер сонгоогүй үеийн тайлбар. */
     emptyText?: React.ReactNode;
+    /**
+     * Шууд урсгалын оронд тоглуулах бичлэг (mp4, webm). Өгвөл
+     * whepBase / hlsBase-ийг үл тоомсорлож, бичлэгийг давтан тоглуулна.
+     */
+    src?: string;
   };
 
 /**
@@ -34,19 +39,25 @@ type CameraPlayerProps = React.ComponentProps<"div"> &
  *     whepBase="http://192.168.1.27:7889"
  *     hlsBase="http://192.168.1.27:7888"
  *   />
+ *
+ * Бичлэг тоглуулах бол:
+ *
+ *   <CameraPlayer camera={selected} src="/clips/cam-1.mp4" />
  */
 export function CameraPlayer({
   camera,
   whepBase,
   hlsBase,
+  src,
   emptyText = "Газрын зураг эсвэл жагсаалтаас камер сонгоно уу",
   className,
   ...props
 }: CameraPlayerProps) {
-  const { videoRef, transport, error } = useCameraStream(camera?.id, {
-    whepBase,
-    hlsBase,
-  });
+  // Бичлэгтэй үед урсгалд огт холбогдохгүй.
+  const { videoRef, transport, error } = useCameraStream(
+    src ? null : camera?.id,
+    { whepBase, hlsBase },
+  );
 
   return (
     <div
@@ -60,13 +71,20 @@ export function CameraPlayer({
             <span className="font-semibold text-ink">{camera.name}</span>
             <span className="flex items-center gap-1.5 text-xs text-ink-muted">
               {camera.id} ·
-              {transport === "connecting" && !error && <Spinner className="size-3" />}
-              {TRANSPORT_LABEL[transport]}
+              {!src && transport === "connecting" && !error && (
+                <Spinner className="size-3" />
+              )}
+              {src ? "бичлэг" : TRANSPORT_LABEL[transport]}
             </span>
           </div>
 
+          {/* key: урсгал ↔ бичлэг солигдоход шинэ <video> үүсгэнэ. Эс бөгөөс
+              урсгалын цэвэрлэгээ (removeAttribute("src")) шинэ бичлэгийг арилгана. */}
           <video
+            key={src ? "file" : "stream"}
             ref={videoRef}
+            src={src}
+            loop={Boolean(src)}
             autoPlay
             muted
             playsInline
