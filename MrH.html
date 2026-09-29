@@ -1,0 +1,4524 @@
+<!doctype html>
+<html lang="mn">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AIVA удирдлага</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+    />
+    <style>
+      /* ---------- tokens: same dark control-room theme as cctv-monitor.html; --text3 raised for AA contrast ---------- */
+      :root {
+        color-scheme: dark;
+        --bg: #0d1114;
+        --panel: #12171b;
+        --panel2: #171d22;
+        --raise: #1d242a;
+        --hover: #212a31;
+        --line: #232b32;
+        --line2: #2e3840;
+        --line3: #3d4a55;
+        --text: #d9dfe4;
+        --text2: #a7b1b9;
+        --text3: #8a96a0;
+        --accent: #6ea8d6;
+        --accent-bg: rgba(110, 168, 214, 0.14);
+        --accent-line: rgba(110, 168, 214, 0.55);
+        --crit: #f0666a;
+        --crit-bg: rgba(229, 72, 77, 0.13);
+        --crit-line: rgba(229, 72, 77, 0.5);
+        --warn: #e0a54a;
+        --warn-bg: rgba(220, 157, 58, 0.13);
+        --warn-line: rgba(220, 157, 58, 0.5);
+        --ok: #5bbd85;
+        --ok-bg: rgba(76, 166, 115, 0.13);
+        --off: #6b767f;
+        --sans:
+          "Noto Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono:
+          "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+          monospace;
+        --r: 4px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 13.5px/1.45 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      a {
+        color: var(--accent);
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .mono {
+        font-family: var(--mono);
+        font-variant-numeric: tabular-nums;
+      }
+      svg.i {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .spacer {
+        flex: 1;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      /* ---------- shell ---------- */
+      #app {
+        min-height: 100%;
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-rows: 48px minmax(0, 1fr);
+        grid-template-areas: "top top" "nav main";
+      }
+      #top {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 4px;
+        background: var(--raise);
+        border: 1px solid var(--line2);
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+      }
+      .brand b {
+        font-weight: 600;
+      }
+      .brand small {
+        color: var(--text3);
+        font-size: 12.5px;
+        border-left: 1px solid var(--line2);
+        padding-left: 9px;
+      }
+      .clock {
+        font-family: var(--mono);
+        color: var(--text2);
+        font-size: 12.5px;
+      }
+      .mewrap {
+        position: relative;
+      }
+      .me {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text2);
+        font-size: 12.5px;
+        height: 34px;
+        padding: 0 8px 0 4px;
+        border-radius: var(--r);
+      }
+      .me:hover,
+      .me[aria-expanded="true"] {
+        background: var(--hover);
+        color: var(--text);
+      }
+      .me > svg {
+        width: 14px;
+        height: 14px;
+      }
+      .umenu {
+        position: absolute;
+        right: 0;
+        top: 40px;
+        z-index: 100;
+        min-width: 220px;
+        padding: 4px 0;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      }
+      .umenu .uh {
+        padding: 8px 14px 10px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .umenu .uh span {
+        color: var(--text3);
+        font-size: 12px;
+      }
+      .umenu button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        height: 36px;
+        padding: 0 14px;
+        text-align: left;
+      }
+      .umenu button:hover,
+      .umenu button:focus-visible {
+        background: var(--hover);
+      }
+      #loggedOut {
+        position: fixed;
+        inset: 0;
+        z-index: 9000;
+        background: var(--bg);
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 16px;
+      }
+      #loggedOut h1 {
+        margin: 0 0 6px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      #loggedOut p {
+        margin: 0 0 18px;
+        color: var(--text2);
+      }
+      .av {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--raise);
+        border: 1px solid var(--line2);
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
+        flex: none;
+      }
+      #nav {
+        grid-area: nav;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        padding: 14px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        position: sticky;
+        top: 48px;
+        height: calc(100vh - 48px);
+      }
+      #nav .nh {
+        font-size: 11px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text3);
+        font-weight: 600;
+        padding: 0 10px 8px;
+      }
+      #nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 10px;
+        border-radius: var(--r);
+        color: var(--text2);
+        text-decoration: none;
+        border-left: 2px solid transparent;
+      }
+      #nav a:hover {
+        background: var(--hover);
+        color: var(--text);
+      }
+      #nav a[aria-current="page"] {
+        background: var(--accent-bg);
+        color: var(--text);
+        border-left-color: var(--accent);
+      }
+      #nav a .n {
+        margin-left: auto;
+        font: 11px var(--mono);
+        color: var(--text3);
+      }
+      #nav .foot {
+        margin-top: auto;
+        padding: 10px;
+        color: var(--text3);
+        font-size: 12px;
+        border-top: 1px solid var(--line);
+      }
+      main {
+        grid-area: main;
+        min-width: 0;
+        padding: 20px 24px 40px;
+      }
+
+      /* ---------- page header, toolbar ---------- */
+      .ph {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+      }
+      .ph h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .ph .sub {
+        margin: 2px 0 0;
+        color: var(--text2);
+        font-size: 13px;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .search {
+        position: relative;
+        width: 280px;
+        max-width: 100%;
+      }
+      .search svg {
+        position: absolute;
+        left: 9px;
+        top: 9px;
+        color: var(--text3);
+      }
+      .search input.in {
+        padding-left: 32px;
+      }
+      .chips {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        height: 32px;
+        padding: 0 11px;
+        border-radius: var(--r);
+        border: 1px solid var(--line2);
+        color: var(--text2);
+        font-size: 12.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+      .chip:hover {
+        color: var(--text);
+        background: var(--hover);
+      }
+      .chip[aria-pressed="true"] {
+        background: var(--accent-bg);
+        border-color: var(--accent-line);
+        color: var(--text);
+      }
+      .chip .c {
+        font: 11px var(--mono);
+        color: var(--text3);
+      }
+      .count {
+        color: var(--text2);
+        font-size: 12.5px;
+      }
+
+      /* ---------- controls ---------- */
+      .btn {
+        height: 34px;
+        padding: 0 13px;
+        border-radius: var(--r);
+        border: 1px solid var(--line2);
+        background: var(--raise);
+        color: var(--text);
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--hover);
+        border-color: var(--line3);
+      }
+      .btn.primary {
+        background: var(--text);
+        border-color: var(--text);
+        color: #0d1114;
+        font-weight: 600;
+      }
+      .btn.primary:hover {
+        background: #fff;
+      }
+      .btn.danger {
+        background: #b8363b;
+        border-color: #b8363b;
+        color: #fff;
+        font-weight: 600;
+      }
+      .btn.danger:hover {
+        background: #cc3f44;
+      }
+      .btn.ghost {
+        background: none;
+        border-color: transparent;
+        color: var(--text2);
+      }
+      .btn.ghost:hover {
+        background: var(--hover);
+        color: var(--text);
+      }
+      .btn.sm {
+        height: 28px;
+        padding: 0 9px;
+        font-size: 12.5px;
+      }
+      .btn[disabled],
+      .btn[aria-disabled="true"] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .ib {
+        width: 32px;
+        height: 32px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: var(--r);
+        color: var(--text2);
+      }
+      .ib:hover {
+        background: var(--hover);
+        color: var(--text);
+      }
+      .ib.del:hover {
+        background: var(--crit-bg);
+        color: var(--crit);
+      }
+      .ib[disabled] {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      input.in,
+      select.in {
+        height: 34px;
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        color: var(--text);
+        font: inherit;
+        padding: 0 10px;
+      }
+      input.in::placeholder {
+        color: #66727c;
+      }
+      input.in:hover,
+      select.in:hover {
+        border-color: var(--line3);
+      }
+      input.in[aria-invalid="true"] {
+        border-color: var(--crit);
+        box-shadow: 0 0 0 1px var(--crit-line);
+      }
+      input.in.mono {
+        font-size: 12.5px;
+      }
+      select.in.auto {
+        width: auto;
+      }
+
+      /* ---------- tables ---------- */
+      .tw {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: auto;
+        background: var(--panel);
+      }
+      table.tbl {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+      }
+      .tbl th,
+      .tbl td {
+        text-align: left;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      .tbl thead th {
+        position: sticky;
+        top: 0;
+        background: var(--panel2);
+        color: var(--text2);
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        z-index: 1;
+      }
+      .tbl tbody tr:hover > td {
+        background: rgba(255, 255, 255, 0.018);
+      }
+      .tbl tbody tr:last-child > td {
+        border-bottom: 0;
+      }
+      .tbl .t1 {
+        font-weight: 500;
+      }
+      .tbl .t2 {
+        color: var(--text2);
+        font-size: 12.5px;
+      }
+      .tbl td.act {
+        white-space: nowrap;
+        text-align: right;
+        width: 1%;
+      }
+      .tbl td.act .gap {
+        display: inline-block;
+        width: 10px;
+      }
+      tr.flash > td {
+        animation: flash 2.4s ease-out;
+      }
+      @keyframes flash {
+        0%,
+        35% {
+          background: var(--accent-bg);
+        }
+        100% {
+          background: transparent;
+        }
+      }
+      .st {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        font-size: 12.5px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ok);
+        flex: none;
+      }
+      .dot.off {
+        background: transparent;
+        border: 1.5px solid var(--off);
+      }
+      .dot.pend {
+        background: var(--warn);
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11.5px;
+        padding: 1px 7px;
+        border-radius: 3px;
+        border: 1px solid var(--line2);
+        color: var(--text2);
+        white-space: nowrap;
+      }
+      .tag.owner {
+        border-color: var(--accent-line);
+        color: #a9cdea;
+        background: var(--accent-bg);
+      }
+      .tag.me {
+        border-color: transparent;
+        background: var(--raise);
+        color: var(--text2);
+        margin-left: 6px;
+      }
+      .empty {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--text2);
+      }
+      .empty b {
+        display: block;
+        color: var(--text);
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+      .empty .btn {
+        margin-top: 14px;
+      }
+
+      /* ---------- drawer & dialogs ---------- */
+      dialog {
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--line2);
+        padding: 0;
+      }
+      dialog::backdrop {
+        background: rgba(3, 6, 8, 0.62);
+      }
+      dialog.drawer {
+        margin: 0 0 0 auto;
+        height: 100vh;
+        max-height: 100vh;
+        width: min(600px, 100vw);
+        border-width: 0 0 0 1px;
+        border-radius: 0;
+      }
+      dialog.drawer[open] {
+        display: flex;
+        flex-direction: column;
+      }
+      .dh {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 12px 14px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .dh h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        flex: 1;
+      }
+      .db {
+        flex: 1;
+        overflow: auto;
+        padding: 18px 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .df {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 12px 20px;
+        border-top: 1px solid var(--line);
+        background: var(--panel2);
+      }
+      form.drawer-form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      fieldset {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      legend {
+        padding: 0;
+        margin-bottom: 12px;
+        font-size: 11.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text2);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+      legend .ln {
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+      .fld {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+      }
+      .fld > label,
+      .fld .lbl {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .req {
+        color: var(--crit);
+        margin-left: 2px;
+      }
+      .hint {
+        color: var(--text3);
+        font-size: 12px;
+        margin: 0;
+      }
+      .hint code {
+        font-family: var(--mono);
+        color: var(--text2);
+        font-size: 11.5px;
+      }
+      .err {
+        color: var(--crit);
+        font-size: 12.5px;
+        margin: 0;
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+      }
+      .err svg {
+        margin-top: 2px;
+      }
+      .wrn {
+        color: var(--warn);
+        font-size: 12.5px;
+        margin: 0;
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .row2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .inrow {
+        display: flex;
+        gap: 6px;
+      }
+      .inrow .in {
+        flex: 1;
+      }
+      .autofill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: -4px;
+      }
+      .linkbtn {
+        color: var(--accent);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        font-size: 12.5px;
+      }
+      .errsum {
+        border: 1px solid var(--crit-line);
+        background: var(--crit-bg);
+        border-radius: var(--r);
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      .errsum b {
+        display: block;
+        margin-bottom: 4px;
+      }
+      .errsum ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .errsum a {
+        color: #ffb9bb;
+      }
+      .test {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        min-height: 20px;
+      }
+      .test.ok {
+        color: var(--ok);
+      }
+      .test.bad {
+        color: var(--crit);
+      }
+      .test.run {
+        color: var(--text2);
+      }
+      .spin {
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--line3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        overflow: hidden;
+      }
+      .seg label {
+        position: relative;
+      }
+      .seg input {
+        position: absolute;
+        opacity: 0;
+        inset: 0;
+        cursor: pointer;
+      }
+      .seg span {
+        display: block;
+        height: 32px;
+        line-height: 32px;
+        padding: 0 12px;
+        font-size: 12.5px;
+        color: var(--text2);
+      }
+      .seg label + label span {
+        border-left: 1px solid var(--line2);
+      }
+      .seg input:checked + span {
+        background: var(--accent-bg);
+        color: var(--text);
+      }
+      .seg input:focus-visible + span {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+      }
+      .cb {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        height: 32px;
+        padding: 0 11px;
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        font-size: 12.5px;
+        cursor: pointer;
+        color: var(--text2);
+      }
+      .cb:hover {
+        background: var(--hover);
+      }
+      .cb input {
+        accent-color: var(--accent);
+        width: 15px;
+        height: 15px;
+        margin: 0;
+      }
+      .cb:has(input:checked) {
+        border-color: var(--accent-line);
+        background: var(--accent-bg);
+        color: var(--text);
+      }
+      .cb:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .wrapchips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      #pickMap {
+        height: 230px;
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        background: #0b0f12;
+      }
+      .ml {
+        background: none;
+        border: 0;
+      }
+      .ml span {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+        pointer-events: none;
+        color: #6f7b85;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+      }
+      .ml-dist span {
+        font-size: 13px;
+        letter-spacing: 0.35em;
+        color: #46525c;
+        font-weight: 600;
+      }
+      .ml-area span {
+        color: #85919b;
+        font-size: 11.5px;
+      }
+      .ml-street span {
+        color: #56626c;
+        font-size: 10.5px;
+        font-style: italic;
+      }
+      #pickMap[data-z="12"] .ml-street,
+      #pickMap[data-z="13"] .ml-street,
+      #pickMap[data-z="14"] .ml-street {
+        display: none;
+      }
+      #pickMap[data-z="12"] .ml-area,
+      #pickMap[data-z="13"] .ml-area {
+        display: none;
+      }
+      .leaflet-container {
+        font: inherit;
+      }
+      .leaflet-control-attribution {
+        background: rgba(13, 17, 20, 0.75) !important;
+        color: var(--text3) !important;
+        font-size: 10px;
+      }
+      .leaflet-control-attribution a {
+        color: var(--text2) !important;
+      }
+      .leaflet-bar a {
+        background: var(--raise) !important;
+        color: var(--text) !important;
+        border-color: var(--line2) !important;
+      }
+      .pin {
+        width: 18px;
+        height: 18px;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        background: var(--accent);
+        border: 2px solid #0b0f12;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      }
+      .cam-o {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #7d8a95;
+        border: 1.5px solid #0b0f12;
+      }
+      /* combobox */
+      .combo {
+        position: relative;
+      }
+      .combo ul {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 38px;
+        z-index: 2000;
+        list-style: none;
+        margin: 0;
+        padding: 4px 0;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+        max-height: 260px;
+        overflow: auto;
+      }
+      .combo li {
+        padding: 7px 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        cursor: pointer;
+      }
+      .combo li .d {
+        color: var(--text3);
+        font-size: 12px;
+      }
+      .combo li .k {
+        margin-left: auto;
+        color: var(--text3);
+        font: 11px var(--mono);
+      }
+      .combo li[aria-selected="true"],
+      .combo li:hover {
+        background: var(--hover);
+      }
+      .combo li.none {
+        color: var(--text3);
+        cursor: default;
+      }
+      /* role cards */
+      .roles {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .rc {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 10px 12px;
+        border: 1px solid var(--line2);
+        border-radius: var(--r);
+        cursor: pointer;
+      }
+      .rc:hover {
+        background: var(--hover);
+      }
+      .rc input {
+        accent-color: var(--accent);
+        margin: 3px 0 0;
+        width: 15px;
+        height: 15px;
+      }
+      .rc b {
+        font-weight: 600;
+        display: block;
+      }
+      .rc span {
+        color: var(--text2);
+        font-size: 12.5px;
+      }
+      .rc:has(input:checked) {
+        border-color: var(--accent-line);
+        background: var(--accent-bg);
+      }
+      .rc:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .rc:has(input:disabled) {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .okbox {
+        border: 1px solid rgba(76, 166, 115, 0.45);
+        background: var(--ok-bg);
+        border-radius: var(--r);
+        padding: 12px 14px;
+      }
+      .okbox b {
+        display: block;
+        margin-bottom: 2px;
+      }
+      /* live stream window */
+      dialog.live {
+        width: min(880px, calc(100vw - 32px));
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      .lh {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 10px 10px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .lh h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .lv {
+        aspect-ratio: 16/9;
+        background: #050708;
+      }
+      .lv canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .lf {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 10px 18px;
+        font-size: 12.5px;
+        color: var(--text2);
+      }
+      /* CSV import */
+      dialog.drawer.wide {
+        width: min(760px, 100vw);
+      }
+      .steps2 {
+        margin: 0;
+        padding-left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        color: var(--text2);
+      }
+      .steps2 b {
+        color: var(--text);
+      }
+      .steps2 code {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--text);
+      }
+      .drop {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 26px 16px;
+        border: 1.5px dashed var(--line3);
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        color: var(--text2);
+      }
+      .drop:hover,
+      .drop.over {
+        border-color: var(--accent);
+        background: var(--accent-bg);
+      }
+      .drop:has(input:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .drop b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .csvsum {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+      .csvsum .okc {
+        color: var(--ok);
+      }
+      .csvsum .bad {
+        color: var(--crit);
+      }
+      table.tbl.mini {
+        min-width: 560px;
+      }
+      .tbl.mini td {
+        padding: 7px 10px;
+        font-size: 12.5px;
+      }
+      .tbl.mini td.mono {
+        white-space: nowrap;
+      }
+      .tbl.mini tr.rem > td {
+        opacity: 0.55;
+      }
+      .tbl.mini tr.edrow > td {
+        background: var(--bg);
+        padding: 12px 14px 14px;
+      }
+      .ced {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 14px;
+      }
+      .ced .wide,
+      .cedf {
+        grid-column: 1 / -1;
+      }
+      .cedf {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tbl.mini tr.bad > td {
+        background: var(--crit-bg);
+      }
+      .rowok {
+        color: var(--ok);
+        white-space: nowrap;
+      }
+      .rowbad {
+        color: #ffb9bb;
+      }
+      dialog.confirm {
+        width: min(440px, calc(100vw - 32px));
+        border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      }
+      dialog.confirm form {
+        padding: 20px 20px 16px;
+      }
+      dialog.confirm h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      dialog.confirm .body {
+        color: var(--text2);
+        font-size: 13.5px;
+      }
+      dialog.confirm .body b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      dialog.confirm ul {
+        margin: 8px 0 0;
+        padding-left: 18px;
+      }
+      dialog.confirm .btns {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+      }
+
+      /* ---------- audit ---------- */
+      .notice {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--text2);
+        font-size: 12.5px;
+      }
+      .tbl tr.day > th {
+        background: var(--bg);
+        color: var(--text2);
+        font-size: 11.5px;
+        letter-spacing: 0.07em;
+        font-weight: 600;
+        padding: 12px 12px 6px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--line);
+      }
+      .tbl tr.day > th span {
+        color: var(--text3);
+        font-family: var(--mono);
+        font-weight: 400;
+        letter-spacing: 0;
+        margin-left: 6px;
+        text-transform: none;
+      }
+      .opc {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+      .opc .av {
+        width: 24px;
+        height: 24px;
+        font-size: 10.5px;
+      }
+      .opc button {
+        color: var(--text);
+        text-decoration: none;
+      }
+      .opc button:hover {
+        text-decoration: underline;
+      }
+      .acv {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+      .acv i {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--text3);
+        flex: none;
+      }
+      .acv.acc i {
+        background: var(--accent);
+      }
+      .acv.warn i {
+        background: var(--warn);
+      }
+      .acv.crit i {
+        background: var(--crit);
+      }
+      .acv.ok i {
+        background: var(--ok);
+      }
+      .acv.crit {
+        color: #ffb9bb;
+      }
+      .obj .mono {
+        color: var(--text);
+      }
+      .xbtn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--text2);
+        font-size: 12.5px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: var(--r);
+      }
+      .xbtn:hover {
+        background: var(--hover);
+        color: var(--text);
+      }
+      .xbtn svg {
+        transition: transform 0.12s;
+      }
+      .xbtn[aria-expanded="true"] svg {
+        transform: rotate(180deg);
+      }
+      tr.sub > td {
+        background: var(--bg);
+        padding: 6px 12px 12px 92px;
+      }
+      .steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-left: 1px solid var(--line2);
+      }
+      .steps li {
+        display: grid;
+        grid-template-columns: 78px 150px 1fr;
+        gap: 10px;
+        padding: 4px 0 4px 14px;
+        position: relative;
+        font-size: 12.5px;
+      }
+      .steps li::before {
+        content: "";
+        position: absolute;
+        left: -4px;
+        top: 10px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--line3);
+      }
+      .steps li.play::before {
+        background: var(--accent);
+      }
+      .steps li.stop::before {
+        background: var(--text2);
+      }
+      .steps .t {
+        color: var(--text3);
+        font-family: var(--mono);
+      }
+      .steps .p {
+        color: var(--text2);
+      }
+      .more {
+        display: flex;
+        justify-content: center;
+        padding: 12px;
+      }
+
+      #toast {
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        z-index: 5000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 10px 9px 16px;
+        background: var(--raise);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        font-size: 13px;
+        max-width: calc(100vw - 32px);
+      }
+
+      @media (max-width: 900px) {
+        #app {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: 48px auto minmax(0, 1fr);
+          grid-template-areas: "top" "nav" "main";
+        }
+        #nav {
+          position: static;
+          height: auto;
+          flex-direction: row;
+          padding: 6px 16px;
+          overflow-x: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        #nav .nh,
+        #nav .foot {
+          display: none;
+        }
+        #nav a {
+          border-left: 0;
+          border-bottom: 2px solid transparent;
+          border-radius: 0;
+        }
+        #nav a[aria-current="page"] {
+          border-bottom-color: var(--accent);
+        }
+        main {
+          padding: 16px 16px 40px;
+        }
+        .brand small,
+        .clock {
+          display: none;
+        }
+        .row2 {
+          grid-template-columns: 1fr;
+        }
+        .search {
+          width: 100%;
+        }
+        tr.sub > td {
+          padding-left: 16px;
+        }
+        .steps li {
+          grid-template-columns: 70px 1fr;
+        }
+        .steps li .p {
+          grid-column: 2;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header id="top">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg class="i" viewBox="0 0 24 24">
+              <path d="M3 7h11l3 3v4l-3 3H3z" />
+              <path d="M17 11l4-2v6l-4-2" />
+            </svg>
+          </div>
+          <b>PLSE x AIVA</b><small>Удирдлага</small>
+        </div>
+        <span class="spacer"></span>
+        <span class="clock" id="clock" aria-hidden="true"></span>
+        <div class="mewrap">
+          <button
+            class="me"
+            id="meBtn"
+            data-act="meMenu"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="meMenu"
+          >
+            <span class="av" aria-hidden="true">ДБ</span
+            ><span>Д.Болд · Админ</span>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          <div class="umenu" id="meMenu" role="menu" aria-labelledby="meBtn" hidden>
+            <div class="uh"><b>Д.Болд</b><span class="mono">bold.d · Админ</span></div>
+            <button role="menuitem" data-act="logout">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11" />
+              </svg>
+              Гарах
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav id="nav" aria-label="Удирдлагын цэс">
+        <div class="nh">Удирдлага</div>
+        <a href="#cameras" data-pg="cameras"
+          ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 7h11l3 3v4l-3 3H3z" />
+            <path d="M17 11l4-2v6l-4-2" /></svg
+          >Камер<span class="n" id="navCams"></span
+        ></a>
+        <a href="#operators" data-pg="operators"
+          ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.2" />
+            <path d="M3.5 19a5.5 5.5 0 0111 0" />
+            <path d="M16 11l1.8 1.8L21 9.5" /></svg
+          >Оператор<span class="n" id="navOps"></span
+        ></a>
+        <a href="#audit" data-pg="audit"
+          ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3h9l4 4v14H6z" />
+            <path d="M9 11h7M9 15h7M9 7h3" /></svg
+          >Аудит лог</a
+        >
+        <div class="foot">Баянзүрх дүүргийн хяналтын төв</div>
+      </nav>
+
+      <main id="main">
+        <!-- ================= CAMERAS ================= -->
+        <section id="pg-cameras" aria-labelledby="hCams">
+          <div class="ph">
+            <div>
+              <h1 id="hCams">Камер</h1>
+              <p class="sub" id="camSub"></p>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn" data-act="csvOpen">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 19h14" /></svg
+              >CSV-ээр оруулах
+            </button>
+            <button class="btn primary" data-act="camNew">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" /></svg
+              >Камер нэмэх
+            </button>
+          </div>
+          <div class="bar">
+            <div class="search">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M20 20l-4.2-4.2" />
+              </svg>
+              <input
+                class="in"
+                id="camQ"
+                type="search"
+                placeholder="Нэр, ID, IP хаягаар хайх"
+                aria-label="Камер хайх"
+                autocomplete="off"
+              />
+            </div>
+            <div
+              class="chips"
+              id="camChips"
+              role="group"
+              aria-label="Төлөвөөр шүүх"
+            ></div>
+          </div>
+          <div class="tw">
+            <table class="tbl" id="camTbl">
+              <caption class="sr">
+                Бүртгэлтэй камерууд
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Төлөв</th>
+                  <th scope="col">Камер</th>
+                  <th scope="col">Байршил</th>
+                  <th scope="col">Холболт</th>
+                  <th scope="col">Өргөрөг, уртраг</th>
+                  <th scope="col">AIVA шинжилгээ</th>
+                  <th scope="col"><span class="sr">Үйлдэл</span></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================= OPERATORS ================= -->
+        <section id="pg-operators" aria-labelledby="hOps" hidden>
+          <div class="ph">
+            <div>
+              <h1 id="hOps">Оператор</h1>
+              <p class="sub" id="opSub"></p>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn primary" data-act="opNew">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" /></svg
+              >Оператор нэмэх
+            </button>
+          </div>
+          <div class="bar">
+            <div class="search">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M20 20l-4.2-4.2" />
+              </svg>
+              <input
+                class="in"
+                id="opQ"
+                type="search"
+                placeholder="Нэр, нэвтрэх нэрээр хайх"
+                aria-label="Оператор хайх"
+                autocomplete="off"
+              />
+            </div>
+            <div
+              class="chips"
+              id="opChips"
+              role="group"
+              aria-label="Төлөвөөр шүүх"
+            ></div>
+          </div>
+          <div class="tw">
+            <table class="tbl" id="opTbl">
+              <caption class="sr">
+                Операторууд ба тэдний эрх
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Оператор</th>
+                  <th scope="col">Нэвтрэх нэр</th>
+                  <th scope="col">Эрх</th>
+                  <th scope="col">Сүүлд нэвтэрсэн</th>
+                  <th scope="col"><span class="sr">Үйлдэл</span></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ================= AUDIT ================= -->
+        <section id="pg-audit" aria-labelledby="hAudit" hidden>
+          <div class="ph">
+            <div>
+              <h1 id="hAudit">Аудит лог</h1>
+              <p class="sub notice">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="5" y="10" width="14" height="10" rx="1.5" />
+                  <path d="M8 10V7a4 4 0 018 0v3" /></svg
+                >Нэвтрэлт болон бичлэг тоглуулсан үйлдэл автоматаар бүртгэгдэнэ.
+                Бүртгэлийг засах, устгах боломжгүй.
+              </p>
+            </div>
+            <span class="spacer"></span>
+            <button class="btn" data-act="csv">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14" /></svg
+              >CSV татах
+            </button>
+          </div>
+          <div class="bar" role="group" aria-label="Аудит логийн шүүлтүүр">
+            <div class="chips" id="auRange"></div>
+            <select
+              class="in auto"
+              id="auOp"
+              aria-label="Оператороор шүүх"
+            ></select>
+            <select
+              class="in auto"
+              id="auAct"
+              aria-label="Үйлдлээр шүүх"
+            ></select>
+            <select
+              class="in auto"
+              id="auCam"
+              aria-label="Камераар шүүх"
+            ></select>
+            <div class="search" style="width: 220px">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="M20 20l-4.2-4.2" />
+              </svg>
+              <input
+                class="in"
+                id="auQ"
+                type="search"
+                placeholder="Хайх"
+                aria-label="Аудит логоос хайх"
+                autocomplete="off"
+              />
+            </div>
+            <button class="btn ghost sm" data-act="auReset" id="auReset">
+              Шүүлтүүр цэвэрлэх
+            </button>
+            <span class="spacer"></span>
+            <span class="count" id="auCount" aria-live="polite"></span>
+          </div>
+          <div class="tw">
+            <table class="tbl" id="auTbl">
+              <caption class="sr">
+                Аудит лог — операторуудын үйлдэл
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Цаг</th>
+                  <th scope="col">Оператор</th>
+                  <th scope="col">Үйлдэл</th>
+                  <th scope="col">Объект</th>
+                  <th scope="col">Дэлгэрэнгүй</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div class="more" id="auMore"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- ================= CAMERA DRAWER ================= -->
+    <dialog class="drawer" id="camDlg" aria-labelledby="camDlgT">
+      <form class="drawer-form" id="camForm" novalidate>
+        <div class="dh">
+          <h2 id="camDlgT">Камер нэмэх</h2>
+          <button
+            type="button"
+            class="ib"
+            data-act="dlgClose"
+            aria-label="Хаах"
+          >
+            <svg class="i" viewBox="0 0 24 24">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="db">
+          <div
+            class="errsum"
+            id="camErrs"
+            tabindex="-1"
+            role="alert"
+            hidden
+          ></div>
+
+          <fieldset>
+            <legend>Үндсэн мэдээлэл<span class="ln"></span></legend>
+            <div class="fld">
+              <label for="fName"
+                >Камерын нэр<span class="req" aria-hidden="true">*</span></label
+              >
+              <input
+                class="in"
+                id="fName"
+                required
+                aria-describedby="fNameH fNameE"
+                placeholder="Жишээ: Сансарын туннель · А орц"
+                autocomplete="off"
+              />
+              <p class="hint" id="fNameH">
+                Операторууд энэ нэрээр хайж олно. Байршил · хэсэг гэж бичвэл
+                ойлгомжтой.
+              </p>
+              <p class="err" id="fNameE" hidden></p>
+            </div>
+            <div class="fld" style="max-width: 260px">
+              <label for="fId"
+                >Камерын ID<span class="req" aria-hidden="true">*</span></label
+              >
+              <input
+                class="in mono"
+                id="fId"
+                required
+                aria-describedby="fIdH fIdE"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <p class="hint" id="fIdH">
+                Автоматаар санал болгосон. Шаардлагатай бол өөрчилнө үү.
+              </p>
+              <p class="err" id="fIdE" hidden></p>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Холболт<span class="ln"></span></legend>
+            <div class="autofill">
+              <button type="button" class="btn sm" data-act="stdFill">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 19l9-9M14 5l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" /></svg
+                >Стандарт хаягаар бөглөх
+              </button>
+              <span class="hint"
+                >RTSP ба HTTPS хаягийг камерын ID-аас үүсгэнэ. Дараа нь нууц
+                үгээ оруулна уу.</span
+              >
+            </div>
+            <div class="fld">
+              <label for="fRtsp"
+                >RTSP хаяг<span class="req" aria-hidden="true">*</span></label
+              >
+              <div class="inrow">
+                <input
+                  class="in mono"
+                  id="fRtsp"
+                  required
+                  inputmode="url"
+                  spellcheck="false"
+                  autocomplete="off"
+                  aria-describedby="fRtspH fRtspE fRtspT"
+                  placeholder="rtsp://admin:нууцүг@10.20.1.25:554/Streaming/Channels/101"
+                />
+                <button type="button" class="btn" data-act="testRtsp">
+                  Шалгах
+                </button>
+              </div>
+              <p class="hint" id="fRtspH">
+                Бүтэц: <code>rtsp://нэвтрэх нэр:нууц үг@IP:порт/зам</code>.
+                Камераас AIVA шинжилгээ хийх видео урсгал.
+              </p>
+              <p class="err" id="fRtspE" hidden></p>
+              <div class="test" id="fRtspT" aria-live="polite"></div>
+            </div>
+            <div class="fld">
+              <label for="fHttps"
+                >HTTPS хаяг (шууд дамжуулалт)<span
+                  class="req"
+                  aria-hidden="true"
+                  >*</span
+                ></label
+              >
+              <input
+                class="in mono"
+                id="fHttps"
+                required
+                inputmode="url"
+                spellcheck="false"
+                autocomplete="off"
+                aria-describedby="fHttpsH fHttpsE"
+                placeholder="https://10.20.0.5:9889/ch27/stream"
+              />
+              <p class="hint" id="fHttpsH">
+                Бүтэц: <code>https://сервер:9889/ch##/stream</code>. Нэг сувгийг
+                хоёр камер ашиглах боломжгүй.
+              </p>
+              <p class="err" id="fHttpsE" hidden></p>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Байршил<span class="ln"></span></legend>
+            <div class="fld">
+              <label for="fPlace" id="fPlaceL"
+                >Газар<span class="req" aria-hidden="true">*</span></label
+              >
+              <div class="combo">
+                <input
+                  class="in"
+                  id="fPlace"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-controls="fPlaceList"
+                  aria-describedby="fPlaceH fPlaceE"
+                  placeholder="Дүүрэг, байршлын нэрээр хайх"
+                  autocomplete="off"
+                />
+                <ul
+                  id="fPlaceList"
+                  role="listbox"
+                  aria-labelledby="fPlaceL"
+                  hidden
+                ></ul>
+              </div>
+              <p class="hint" id="fPlaceH">
+                Газар сонгоход газрын зураг тийш шилжинэ.
+              </p>
+              <p class="err" id="fPlaceE" hidden></p>
+            </div>
+            <div class="fld">
+              <span class="lbl" id="mapL">Яг байрлал</span>
+              <div
+                id="pickMap"
+                role="application"
+                aria-labelledby="mapL"
+                aria-describedby="mapH"
+              ></div>
+              <p class="hint" id="mapH">
+                Газрын зураг дээр дарж эсвэл тэмдгийг чирж камерын байрлалыг
+                заана уу. Эсвэл доор тоогоор бичнэ үү.
+              </p>
+            </div>
+            <div class="row2">
+              <div class="fld">
+                <label for="fLat"
+                  >Өргөрөг<span class="req" aria-hidden="true">*</span></label
+                >
+                <input
+                  class="in mono"
+                  id="fLat"
+                  required
+                  inputmode="decimal"
+                  autocomplete="off"
+                  aria-describedby="fLatH fLatE"
+                  placeholder="47.921200"
+                />
+                <p class="hint" id="fLatH">
+                  −90 … 90. «47.92, 106.93» гэж хамт хуулж тавьж болно.
+                </p>
+                <p class="err" id="fLatE" hidden></p>
+              </div>
+              <div class="fld">
+                <label for="fLng"
+                  >Уртраг<span class="req" aria-hidden="true">*</span></label
+                >
+                <input
+                  class="in mono"
+                  id="fLng"
+                  required
+                  inputmode="decimal"
+                  autocomplete="off"
+                  aria-describedby="fLngH fLngE"
+                  placeholder="106.933800"
+                />
+                <p class="hint" id="fLngH">−180 … 180</p>
+                <p class="err" id="fLngE" hidden></p>
+              </div>
+            </div>
+            <p class="wrn" id="geoW" hidden></p>
+          </fieldset>
+
+          <fieldset>
+            <legend>AIVA шинжилгээ<span class="ln"></span></legend>
+            <p class="hint" style="margin-top: -6px">
+              Энэ камер дээр илрүүлэх үйл явдлууд. Дараа нь өөрчилж болно.
+            </p>
+            <div class="wrapchips" id="fRules"></div>
+          </fieldset>
+        </div>
+        <div class="df">
+          <button type="button" class="btn ghost" data-act="dlgClose">
+            Болих
+          </button>
+          <span class="spacer"></span>
+          <button type="submit" class="btn primary" id="camSubmit">
+            Камер нэмэх
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ================= OPERATOR DRAWER ================= -->
+    <dialog class="drawer" id="opDlg" aria-labelledby="opDlgT">
+      <form class="drawer-form" id="opForm" novalidate>
+        <div class="dh">
+          <h2 id="opDlgT">Оператор нэмэх</h2>
+          <button
+            type="button"
+            class="ib"
+            data-act="dlgClose"
+            aria-label="Хаах"
+          >
+            <svg class="i" viewBox="0 0 24 24">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="db" id="opBody">
+          <div
+            class="errsum"
+            id="opErrs"
+            tabindex="-1"
+            role="alert"
+            hidden
+          ></div>
+          <fieldset>
+            <legend>Хэрэглэгч<span class="ln"></span></legend>
+            <div class="row2">
+              <div class="fld">
+                <label for="oName"
+                  >Овог, нэр<span class="req" aria-hidden="true">*</span></label
+                >
+                <input
+                  class="in"
+                  id="oName"
+                  required
+                  autocomplete="off"
+                  aria-describedby="oNameE"
+                  placeholder="Б.Тэмүүлэн"
+                />
+                <p class="err" id="oNameE" hidden></p>
+              </div>
+              <div class="fld">
+                <label for="oLogin"
+                  >Нэвтрэх нэр<span class="req" aria-hidden="true"
+                    >*</span
+                  ></label
+                >
+                <input
+                  class="in mono"
+                  id="oLogin"
+                  required
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="oLoginH oLoginE"
+                  placeholder="temuulen.b"
+                />
+                <p class="hint" id="oLoginH">
+                  Латин жижиг үсэг, тоо, «.» «_». 3–32 тэмдэгт.
+                </p>
+                <p class="err" id="oLoginE" hidden></p>
+              </div>
+            </div>
+            <div class="fld">
+              <label for="oPw" id="oPwL"
+                >Нууц үг<span class="req" aria-hidden="true">*</span></label
+              >
+              <div class="inrow">
+                <input
+                  class="in mono"
+                  id="oPw"
+                  type="password"
+                  autocomplete="new-password"
+                  spellcheck="false"
+                  aria-describedby="oPwH oPwE"
+                />
+                <button
+                  type="button"
+                  class="btn"
+                  data-act="pwToggle"
+                  aria-controls="oPw"
+                  aria-pressed="false"
+                >
+                  Харуулах
+                </button>
+              </div>
+              <p class="hint" id="oPwH">
+                Хамгийн багадаа 8 тэмдэгт, үсэг болон тоо орсон байна.
+              </p>
+              <p class="err" id="oPwE" hidden></p>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Эрх<span class="ln"></span></legend>
+            <div
+              class="roles"
+              role="radiogroup"
+              aria-label="Эрхийн түвшин"
+              id="oRoles"
+            ></div>
+            <p class="hint" id="oRoleH" hidden></p>
+          </fieldset>
+        </div>
+        <div class="df" id="opFoot">
+          <button type="button" class="btn ghost" data-act="dlgClose">
+            Болих
+          </button>
+          <span class="spacer"></span>
+          <button type="submit" class="btn primary" id="opSubmit">
+            Оператор нэмэх
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ================= CONFIRM ================= -->
+    <dialog
+      class="confirm"
+      id="cfDlg"
+      aria-labelledby="cfT"
+      aria-describedby="cfB"
+    >
+      <form method="dialog">
+        <h2 id="cfT"></h2>
+        <div class="body" id="cfB"></div>
+        <div class="btns">
+          <button class="btn" value="cancel" id="cfNo" autofocus></button
+          ><button class="btn danger" value="ok" id="cfOk"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="live" id="liveDlg" aria-labelledby="liveT">
+      <div class="lh">
+        <h2 id="liveT"></h2>
+        <button class="ib" data-act="liveFull" aria-label="Бүтэн дэлгэц" title="Бүтэн дэлгэц">
+          <svg class="i" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        </button>
+        <button class="ib" data-act="liveClose" aria-label="Хаах" title="Хаах (Esc)">
+          <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+      <div class="lv" id="liveBox"><canvas id="liveCv" aria-label="Шууд дүрс"></canvas></div>
+      <div class="lf">
+        <span class="st" id="liveMeta"></span><span class="spacer"></span><span class="mono" id="liveUrl"></span>
+      </div>
+    </dialog>
+
+    <dialog class="drawer wide" id="csvDlg" aria-labelledby="csvT">
+      <div class="drawer-form">
+        <div class="dh">
+          <h2 id="csvT">Камер CSV-ээр оруулах</h2>
+          <button type="button" class="ib" data-act="dlgClose" aria-label="Хаах">
+            <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div class="db">
+          <ol class="steps2">
+            <li>
+              <b>Загвар файлыг татаж</b> камеруудаа мөр мөрөөр бөглөнө. Баганууд:
+              <code>id, name, place, lat, lng, rtsp, https, rules</code>
+              <div style="margin-top:6px"><button type="button" class="btn sm" data-act="csvTpl">
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5 4.5M5 19h14" /></svg>Загвар татах
+              </button></div>
+            </li>
+            <li><b>Файлаа оруулна.</b> Мөр бүрийг шалгаж, зөв мөрүүдийг л нэмнэ.</li>
+          </ol>
+          <label class="drop" id="csvDrop">
+            <input type="file" id="csvFile" accept=".csv,text/csv" class="sr" />
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px"><path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 19h14" /></svg>
+            <b>CSV файлаа энд чирж оруулна уу</b>
+            <span>эсвэл дарж сонгоно · UTF-8 кодчилол</span>
+          </label>
+          <p class="hint" style="margin-top:-10px">Файл бэлэн биш бол <button type="button" class="linkbtn" data-act="csvSample">жишээ өгөгдлөөр туршиж</button> үзээрэй.</p>
+          <div id="csvOut" aria-live="polite"></div>
+        </div>
+        <div class="df">
+          <button type="button" class="btn ghost" data-act="dlgClose">Болих</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn primary" id="csvGo" data-act="csvImport" disabled>Камер нэмэх</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+    <div id="loggedOut" hidden>
+      <div>
+        <h1>Та системээс гарлаа</h1>
+        <p>Үргэлжлүүлэн ажиллахын тулд дахин нэвтэрнэ үү.</p>
+        <button class="btn primary" data-act="relogin">Дахин нэвтрэх</button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+      (() => {
+        "use strict";
+        const $ = (s, r = document) => r.querySelector(s);
+        const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+        const esc = (s) =>
+          String(s ?? "").replace(
+            /[&<>"]/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+          );
+        const pad = (n, w = 2) => String(n).padStart(w, "0");
+        const norm = (s) =>
+          String(s)
+            .toLowerCase()
+            .replace(/[\s\-·.,›]/g, "");
+        function rng(seed) {
+          return () => {
+            seed |= 0;
+            seed = (seed + 0x6d2b79f5) | 0;
+            let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+        const MIN = 60e3,
+          HOUR = 3600e3,
+          DAY = 86400e3;
+        const fmtT = (d) =>
+          pad(d.getHours()) +
+          ":" +
+          pad(d.getMinutes()) +
+          ":" +
+          pad(d.getSeconds());
+        const fmtHM = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
+        const fmtD = (d) =>
+          d.getFullYear() +
+          "-" +
+          pad(d.getMonth() + 1) +
+          "-" +
+          pad(d.getDate());
+        const dayStart = (d) => {
+          const x = new Date(d);
+          x.setHours(0, 0, 0, 0);
+          return x.getTime();
+        };
+        const WD = [
+          "Ням",
+          "Даваа",
+          "Мягмар",
+          "Лхагва",
+          "Пүрэв",
+          "Баасан",
+          "Бямба",
+        ];
+        function dayLabel(d) {
+          const k = Math.round((dayStart(new Date()) - dayStart(d)) / DAY);
+          return k === 0 ? "Өнөөдөр" : k === 1 ? "Өчигдөр" : WD[d.getDay()];
+        }
+        function ago(d) {
+          const s = (Date.now() - d) / 1000;
+          if (s < 60) return "дөнгөж сая";
+          if (s < 3600) return Math.floor(s / 60) + " мин өмнө";
+          if (s < 86400) return Math.floor(s / 3600) + " цагийн өмнө";
+          return Math.floor(s / 86400) + " өдрийн өмнө";
+        }
+        function fmtDur(sec) {
+          sec = Math.round(sec);
+          const m = Math.floor(sec / 60),
+            s = sec % 60;
+          return m ? `${m} мин ${s} сек` : `${s} сек`;
+        }
+        const ICON = {
+          live: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M10 8.8v6.4l5.2-3.2z" fill="currentColor" stroke="none"/></svg>',
+          edit: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+          del: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/></svg>',
+          log: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg>',
+          chev: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
+          err: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>',
+          warn: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></svg>',
+          ok: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+          copy: '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></svg>',
+          restore:
+            '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7"/><path d="M4 4v4h4"/></svg>',
+        };
+
+        /* =========================================================
+   Data (mock)
+   ========================================================= */
+        const PLACES = [
+          ["Баянзүрх", "Сансар", 47.9208, 106.9352],
+          ["Баянзүрх", "Нарантуул зах", 47.9118, 106.9512],
+          ["Баянзүрх", "13-р хороолол", 47.9242, 106.9558],
+          ["Баянзүрх", "Энхтайвны өргөн чөлөө", 47.9173, 106.944],
+          ["Баянзүрх", "Зүүн айл", 47.9165, 106.9622],
+          ["Баянзүрх", "8-р хороо · Дүүргийн эмнэлэг", 47.919, 106.9705],
+          ["Баянзүрх", "Амгалан", 47.9147, 106.9902],
+          ["Баянзүрх", "Цайз зах", 47.91, 106.938],
+          ["Баянзүрх", "Баянзүрхийн гүүр", 47.904, 106.957],
+          ["Баянзүрх", "7-р хороо", 47.9277, 106.9434],
+          ["Сүхбаатар", "Сүхбаатарын талбай", 47.9187, 106.9177],
+          ["Сүхбаатар", "Сөүлийн гудамж", 47.9117, 106.92],
+          ["Сүхбаатар", "Их дэлгүүр", 47.9166, 106.906],
+        ].map(([d, n, lat, lng]) => ({ d, n, lat, lng, label: d + " › " + n }));
+        const DISTRICTS = [...new Set(PLACES.map((p) => p.d))];
+        const RULES = {
+          fight: "Зодоон",
+          fire: "Гал",
+          collapse: "Хүн унах",
+          intrusion: "Нэвтрэлт",
+          crowd: "Бөөгнөрөл",
+          loitering: "Сэлгүүцэл",
+        };
+        const STREAM_HOST = "10.20.0.5:9889";
+
+        let cams = [
+          [
+            "BZD-021",
+            "Сансарын туннель · А орц",
+            0,
+            47.9212,
+            106.9338,
+            21,
+            1,
+            "fight intrusion crowd",
+          ],
+          [
+            "BZD-022",
+            "Сансарын туннель · Б орц",
+            0,
+            47.9205,
+            106.9364,
+            22,
+            2,
+            "fight intrusion crowd",
+          ],
+          [
+            "BZD-024",
+            "Сансар худалдааны төв · Хаалга",
+            0,
+            47.9227,
+            106.9373,
+            24,
+            4,
+            "fight crowd fire",
+            false,
+          ],
+          [
+            "BZD-041",
+            "Энхтайвны өргөн чөлөө × Сансарын гудамж",
+            3,
+            47.9178,
+            106.9352,
+            41,
+            5,
+            "collapse crowd",
+          ],
+          [
+            "BZD-011",
+            "Нарантуул зах · Гол хаалга",
+            1,
+            47.9124,
+            106.9494,
+            11,
+            6,
+            "fight crowd fire",
+          ],
+          [
+            "BZD-012",
+            "Нарантуул зах · Зүүн хаалга",
+            1,
+            47.9121,
+            106.9537,
+            12,
+            7,
+            "fight crowd",
+          ],
+          [
+            "BZD-014",
+            "Нарантуул зах · Хоолны төв",
+            1,
+            47.9109,
+            106.9516,
+            14,
+            8,
+            "fight crowd fire",
+          ],
+          [
+            "BZD-015",
+            "Нарантуул зах · Өмнөд гудам",
+            1,
+            47.9097,
+            106.9501,
+            15,
+            9,
+            "crowd",
+            false,
+          ],
+          [
+            "BZD-031",
+            "44-р сургууль · Хаалга",
+            2,
+            47.9253,
+            106.9548,
+            31,
+            10,
+            "intrusion fight",
+          ],
+          [
+            "BZD-033",
+            "12-р байр · Орц",
+            2,
+            47.9229,
+            106.9553,
+            33,
+            11,
+            "intrusion fire",
+          ],
+          [
+            "BZD-043",
+            "Зүүн айл · Автобусны буудал",
+            4,
+            47.9165,
+            106.9622,
+            43,
+            12,
+            "fight crowd collapse",
+          ],
+          [
+            "BZD-051",
+            "Дүүргийн эмнэлэг · Орц",
+            5,
+            47.9186,
+            106.9696,
+            51,
+            13,
+            "collapse fight",
+          ],
+          [
+            "BZD-044",
+            "Амгалангийн уулзвар",
+            6,
+            47.9147,
+            106.9902,
+            44,
+            14,
+            "collapse crowd",
+          ],
+          [
+            "BZD-072",
+            "Цайз зах · Орц",
+            7,
+            47.91,
+            106.938,
+            72,
+            15,
+            "fight crowd",
+          ],
+          [
+            "BZD-071",
+            "Баянзүрхийн гүүр · Хойд тал",
+            8,
+            47.9031,
+            106.956,
+            71,
+            16,
+            "collapse",
+          ],
+          [
+            "BZD-062",
+            "7-р хороо · Цэцэрлэгт хүрээлэн",
+            9,
+            47.9283,
+            106.9447,
+            62,
+            17,
+            "fight loitering",
+            false,
+          ],
+          [
+            "SBD-001",
+            "Сүхбаатарын талбай · Хойд",
+            10,
+            47.9195,
+            106.9176,
+            101,
+            18,
+            "fight crowd collapse",
+          ],
+          [
+            "SBD-010",
+            "Сөүлийн гудамж · Баар, рестораны хэсэг",
+            11,
+            47.9118,
+            106.9181,
+            110,
+            20,
+            "fight crowd",
+          ],
+        ].map((a) => ({
+          id: a[0],
+          name: a[1],
+          place: PLACES[a[2]].label,
+          lat: a[3],
+          lng: a[4],
+          rtsp: `rtsp://admin:Cam${a[5]}pass@10.20.1.${a[5]}:554/Streaming/Channels/101`,
+          https: `https://${STREAM_HOST}/ch${pad(a[6])}/stream`,
+          rules: a[7].split(" "),
+          online: a[8] !== false,
+        }));
+        const camById = (id) => cams.find((c) => c.id === id);
+
+        const ROLES = {
+          viewer: {
+            l: "Оператор",
+            d: "Шууд дүрс, бичлэг үзэж, дохиолол хүлээн авна. Тохиргоо өөрчлөхгүй.",
+          },
+          owner: {
+            l: "Админ эрх",
+            d: "Бүх эрх: камер нэмэх, устгах, оператор удирдах, аудит лог үзэх.",
+          },
+        };
+        const now0 = Date.now();
+        let ops = [
+          {
+            id: 1,
+            name: "Д.Болд",
+            login: "bold.d",
+            role: "owner",
+            last: now0 - 42 * MIN,
+            active: true,
+            me: true,
+          },
+          {
+            id: 2,
+            name: "Б.Тэмүүлэн",
+            login: "temuulen.b",
+            role: "viewer",
+            last: now0 - 3 * MIN,
+            active: true,
+          },
+          {
+            id: 3,
+            name: "Г.Сарангэрэл",
+            login: "sarangerel.g",
+            role: "viewer",
+            last: now0 - 20 * MIN,
+            active: true,
+          },
+          {
+            id: 4,
+            name: "Э.Нямдорж",
+            login: "nyamdorj.e",
+            role: "viewer",
+            last: now0 - 9 * HOUR,
+            active: true,
+          },
+          {
+            id: 5,
+            name: "О.Ану",
+            login: "anu.o",
+            role: "viewer",
+            last: now0 - 26 * HOUR,
+            active: true,
+          },
+          {
+            id: 6,
+            name: "Ц.Батзориг",
+            login: "batzorig.ts",
+            role: "owner",
+            last: now0 - 2 * DAY,
+            active: true,
+          },
+          {
+            id: 7,
+            name: "Л.Мөнхзул",
+            login: "munkhzul.l",
+            role: "viewer",
+            last: now0 - 4 * DAY,
+            active: false,
+            revokedAt: now0 - 3 * DAY,
+          },
+        ];
+        const opById = (id) => ops.find((o) => o.id === id);
+        const ME = ops[0];
+        const initials = (n) => {
+          const p = n.split(".");
+          return (p[0][0] + (p[1] || "")[0]).toUpperCase();
+        };
+
+        /* audit */
+        const ACT = {
+          rec_view: { l: "Бичлэг тоглуулсан", g: "rec", c: "acc" },
+          login: { l: "Нэвтэрсэн", g: "auth" },
+          logout: { l: "Гарсан", g: "auth" },
+          login_fail: { l: "Нэвтрэлт амжилтгүй", g: "auth", c: "crit" },
+        };
+        const AGROUPS = {
+          all: "Бүх үйлдэл",
+          auth: "Нэвтрэлт",
+          rec: "Бичлэг тоглуулсан",
+        };
+        const STEP = {
+          play: "Тоглуулсан",
+          pause: "Түр зогсоосон",
+          seek: "Гүйлгэсэн",
+          speed: "Хурд өөрчилсөн",
+          stop: "Зогсоосон",
+        };
+        const audit = [];
+        (function genAudit() {
+          const r = rng(2026),
+            today = dayStart(now0),
+            camIds = cams.map((c) => c.id);
+          const ip = (o) => "10.20.5." + (10 + o.id);
+          for (let d = 6; d >= 0; d--) {
+            ops
+              .filter((o) => o.id !== 1)
+              .forEach((o) => {
+                if (!o.active && today - d * DAY > o.revokedAt) return;
+                if (d > 1 && r() < 0.22) return;
+                let t =
+                  today -
+                  d * DAY +
+                  (d === 0
+                    ? Math.max(0, Math.min(8 * HOUR, now0 - today - 6 * HOUR))
+                    : (r() < 0.65 ? 8 : 20) * HOUR) +
+                  r() * 20 * MIN;
+                if (t > now0) return;
+                if (r() < 0.1)
+                  audit.push({
+                    t: t - 2 * MIN,
+                    op: o.id,
+                    act: "login_fail",
+                    ip: ip(o),
+                    note: "Нууц үг буруу",
+                  });
+                audit.push({ t, op: o.id, act: "login", ip: ip(o) });
+                const n = 3 + Math.floor(r() * 5);
+                for (let i = 0; i < n; i++) {
+                  t += (8 + r() * 60) * MIN;
+                  if (t > now0 - MIN) break;
+                  const cam = camIds[Math.floor(r() * camIds.length)];
+                  {
+                    let tt = t,
+                      pos = t - (5 + r() * 120) * MIN;
+                    const sub = [{ t: tt, a: "play", pos }];
+                    const k = 1 + Math.floor(r() * 3);
+                    for (let j = 0; j < k; j++) {
+                      const dt = (15 + r() * 80) * 1e3;
+                      tt += dt;
+                      pos += dt;
+                      const y = r();
+                      if (y < 0.35) {
+                        sub.push({ t: tt, a: "pause", pos });
+                        tt += (5 + r() * 25) * 1e3;
+                        sub.push({ t: tt, a: "play", pos });
+                      } else if (y < 0.75) {
+                        const np =
+                          pos + (r() < 0.5 ? -1 : 1) * (30 + r() * 150) * 1e3;
+                        sub.push({ t: tt, a: "seek", pos: np, from: pos });
+                        pos = np;
+                      } else sub.push({ t: tt, a: "speed", pos, v: "2×" });
+                    }
+                    const dt = (10 + r() * 50) * 1e3;
+                    tt += dt;
+                    pos += dt;
+                    sub.push({ t: tt, a: "stop", pos });
+                    audit.push({
+                      t,
+                      op: o.id,
+                      act: "rec_view",
+                      cam,
+                      sub,
+                      ip: ip(o),
+                    });
+                  }
+                }
+                if (t + HOUR < now0)
+                  audit.push({
+                    t: t + 30 * MIN,
+                    op: o.id,
+                    act: "logout",
+                    ip: ip(o),
+                  });
+              });
+          }
+          audit.sort((a, b) => b.t - a.t);
+        })();
+
+        /* =========================================================
+   Routing
+   ========================================================= */
+        const PAGES = ["cameras", "operators", "audit"];
+        function route() {
+          const pg = PAGES.includes(location.hash.slice(1))
+            ? location.hash.slice(1)
+            : "cameras";
+          PAGES.forEach((p) => {
+            $("#pg-" + p).hidden = p !== pg;
+          });
+          $$("#nav a").forEach((a) => {
+            if (a.dataset.pg === pg) a.setAttribute("aria-current", "page");
+            else a.removeAttribute("aria-current");
+          });
+          document.title =
+            { cameras: "Камер", operators: "Оператор", audit: "Аудит лог" }[
+              pg
+            ] + " · AIVA удирдлага";
+          if (pg === "audit") renderAudit();
+        }
+        addEventListener("hashchange", route);
+        function go(pg) {
+          if (location.hash !== "#" + pg) location.hash = pg;
+          else route();
+          $("#main").focus?.();
+        }
+
+        /* =========================================================
+   Cameras page
+   ========================================================= */
+        const CF = { q: "", st: "all" };
+        let flashId = null;
+        const hostOf = (u) => {
+          const m = /^rtsp:\/\/(?:[^@\/]*@)?([^\/:]+)(?::(\d+))?/i.exec(
+            u || "",
+          );
+          return m ? m[1] + ":" + (m[2] || "554") : "—";
+        };
+        const chOf = (u) => (/\/(ch\d{2,3})\//i.exec(u || "") || [])[1] || "—";
+        function renderCams() {
+          const off = cams.filter((c) => !c.online).length;
+          $("#camSub").textContent =
+            `${cams.length} камер · ${off ? off + " холболтгүй" : "бүгд холболттой"}`;
+          $("#navCams").textContent = cams.length;
+          $("#camChips").innerHTML = [
+            ["all", "Бүгд", cams.length],
+            ["on", "Холболттой", cams.length - off],
+            ["off", "Холболтгүй", off],
+          ]
+            .map(
+              ([k, l, n]) =>
+                `<button class="chip" data-act="camSt" data-v="${k}" aria-pressed="${CF.st === k}">${l}<span class="c">${n}</span></button>`,
+            )
+            .join("");
+          const q = norm(CF.q);
+          const list = cams.filter(
+            (c) =>
+              (CF.st === "all" || (CF.st === "on") === c.online) &&
+              (!q ||
+                norm(c.id + c.name + c.place + hostOf(c.rtsp)).includes(q)),
+          );
+          const tb = $("#camTbl tbody");
+          if (!cams.length) {
+            tb.innerHTML = `<tr><td colspan="7"><div class="empty"><b>Одоогоор камер бүртгэгдээгүй байна</b>Эхний камераа нэмж шууд дүрс, AIVA шинжилгээг эхлүүлнэ үү.<br><button class="btn primary" data-act="camNew">Камер нэмэх</button></div></td></tr>`;
+            return;
+          }
+          if (!list.length) {
+            tb.innerHTML = `<tr><td colspan="7"><div class="empty"><b>Тохирох камер олдсонгүй</b>${CF.q ? `«${esc(CF.q)}» гэсэн хайлтад тохирох камер алга. ` : ""}Хайлт, шүүлтүүрээ өөрчилнө үү.<br><button class="btn" data-act="camClear">Шүүлтүүр цэвэрлэх</button></div></td></tr>`;
+            return;
+          }
+          tb.innerHTML = list
+            .map(
+              (
+                c,
+              ) => `<tr data-id="${c.id}"${(flashId instanceof Set ? flashId.has(c.id) : c.id === flashId) ? ' class="flash"' : ""}>
+    <td><span class="st"><span class="dot${c.online ? "" : " off"}"></span>${c.online ? "Холболттой" : "Холболтгүй"}</span></td>
+    <td><div class="t1">${esc(c.name)}</div><div class="t2 mono">${c.id}</div></td>
+    <td class="t2">${esc(c.place)}</td>
+    <td><div class="mono t2">${esc(hostOf(c.rtsp))}</div><div class="t2">Суваг <span class="mono">${chOf(c.https)}</span></div></td>
+    <td class="mono t2">${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}</td>
+    <td class="t2">${c.rules.length ? c.rules.map((k) => RULES[k]).join(", ") : "Идэвхгүй"}</td>
+    <td class="act"><button class="btn ghost sm" data-act="camEdit" data-id="${c.id}">${ICON.edit}Засах</button><button class="btn ghost sm" data-act="camLive" data-id="${c.id}">${ICON.live}Шууд үзэх</button><button class="btn ghost sm" data-act="camLog" data-id="${c.id}">${ICON.log}Лог</button><span class="gap"></span><button class="ib del" data-act="camDel" data-id="${c.id}" aria-label="${c.id} камерыг устгах" title="Устгах">${ICON.del}</button></td></tr>`,
+            )
+            .join("");
+          flashId = null;
+        }
+        $("#camQ").addEventListener("input", (e) => {
+          CF.q = e.target.value;
+          renderCams();
+        });
+
+        /* ---------- live stream preview (simulated picture) ---------- */
+        const liveDlg = $("#liveDlg");
+        let liveCam = null,
+          liveRaf = 0;
+        function openLive(id) {
+          liveCam = camById(id);
+          $("#liveT").textContent = `${liveCam.id} · ${liveCam.name}`;
+          $("#liveUrl").textContent = liveCam.https;
+          $("#liveMeta").innerHTML = liveCam.online
+            ? '<span class="dot"></span>Холболттой · 1920×1080 · H.264 · 25 кадр/с'
+            : '<span class="dot off"></span>Холболтгүй · камер хариу өгөхгүй байна';
+          liveDlg.showModal();
+          cancelAnimationFrame(liveRaf);
+          liveRaf = requestAnimationFrame(drawLive);
+        }
+        liveDlg.addEventListener("close", () => {
+          cancelAnimationFrame(liveRaf);
+          liveCam = null;
+          lastFocus?.focus?.();
+        });
+        function drawLive(ts) {
+          const c = liveCam;
+          if (!c) return;
+          const cv = $("#liveCv"),
+            rc = cv.getBoundingClientRect(),
+            dpr = Math.min(devicePixelRatio || 1, 2);
+          const W = Math.round(rc.width * dpr),
+            H = Math.round(rc.height * dpr);
+          if (cv.width !== W || cv.height !== H) {
+            cv.width = W;
+            cv.height = H;
+          }
+          const x = cv.getContext("2d"),
+            t = ts / 1000,
+            fs = 12 * dpr;
+          if (!c.online) {
+            x.fillStyle = "#0c0f11";
+            x.fillRect(0, 0, W, H);
+            for (let i = 0; i < 900; i++) {
+              const v = (Math.random() * 60) | 0;
+              x.fillStyle = `rgb(${v},${v},${v})`;
+              x.fillRect(Math.random() * W, Math.random() * H, 2 * dpr, 2 * dpr);
+            }
+            x.textAlign = "center";
+            x.fillStyle = "#d9dfe4";
+            x.font = `600 ${15 * dpr}px "Roboto Mono", monospace`;
+            x.fillText("ДОХИО АЛГА", W / 2, H / 2 - 6 * dpr);
+            x.fillStyle = "#a7b1b9";
+            x.font = `${12 * dpr}px "Noto Sans", sans-serif`;
+            x.fillText("RTSP хаяг, камерын тэжээл, сүлжээг шалгана уу.", W / 2, H / 2 + 16 * dpr);
+            x.textAlign = "left";
+          } else {
+            const r = rng([...c.id].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7));
+            const hz = H * (0.3 + r() * 0.12);
+            let g = x.createLinearGradient(0, 0, 0, hz);
+            g.addColorStop(0, "#3a434b");
+            g.addColorStop(1, "#5a646c");
+            x.fillStyle = g;
+            x.fillRect(0, 0, W, hz + 1);
+            for (let bx = -0.05; bx < 1.05; ) {
+              const bw = 0.06 + r() * 0.16, bh = 0.1 + r() * 0.26, sh = 22 + ((r() * 22) | 0);
+              x.fillStyle = `rgb(${sh},${sh + 4},${sh + 8})`;
+              x.fillRect(bx * W, hz - bh * H, bw * W, bh * H + 1);
+              bx += bw + r() * 0.02;
+            }
+            g = x.createLinearGradient(0, hz, 0, H);
+            g.addColorStop(0, "#41484d");
+            g.addColorStop(1, "#22272b");
+            x.fillStyle = g;
+            x.fillRect(0, hz, W, H - hz);
+            const vx = (0.3 + r() * 0.4) * W;
+            x.fillStyle = "#2d3236";
+            x.beginPath();
+            x.moveTo(vx - W * 0.02, hz);
+            x.lineTo(vx + W * 0.02, hz);
+            x.lineTo(vx + W * 0.55, H);
+            x.lineTo(vx - W * 0.55, H);
+            x.fill();
+            for (let i = 0; i < 7; i++) {
+              const d = 0.15 + r() * 0.75, sp = (0.012 + r() * 0.03) * (r() < 0.5 ? -1 : 1), ph = r();
+              const p = (((ph + t * sp) % 1) + 1) % 1, px = (p * 1.2 - 0.1) * W, py = hz + (H - hz) * d, h = H * (0.07 + 0.2 * d);
+              const sh = (60 + r() * 70) | 0;
+              x.fillStyle = `rgb(${sh},${sh + 3},${sh + 6})`;
+              x.fillRect(px - h * 0.11, py - h * 0.8, h * 0.22, h * 0.8);
+              x.beginPath();
+              x.arc(px, py - h * 0.9, h * 0.09, 0, 7);
+              x.fill();
+            }
+            g = x.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.75);
+            g.addColorStop(0, "rgba(0,0,0,0)");
+            g.addColorStop(1, "rgba(0,0,0,.45)");
+            x.fillStyle = g;
+            x.fillRect(0, 0, W, H);
+          }
+          // on-screen display
+          const osd = (s, px, py, al = "left", col = "rgba(240,244,247,.92)") => {
+            x.textAlign = al;
+            x.fillStyle = "rgba(0,0,0,.55)";
+            x.fillText(s, px + dpr, py + dpr);
+            x.fillStyle = col;
+            x.fillText(s, px, py);
+          };
+          const m = 12 * dpr, now = new Date();
+          x.font = `500 ${fs}px "Roboto Mono", monospace`;
+          osd(`${c.id}  ${c.name.toUpperCase()}`, m, m + fs);
+          osd(`${fmtD(now)} ${fmtT(now)}`, W - m, m + fs, "right");
+          if (c.online) {
+            x.fillStyle = "#e5484d";
+            x.beginPath();
+            x.arc(m + 5 * dpr, H - m - fs * 0.35, 4.5 * dpr, 0, 7);
+            x.fill();
+            osd("ШУУД", m + 15 * dpr, H - m);
+          }
+          x.textAlign = "left";
+          liveRaf = requestAnimationFrame(drawLive);
+        }
+
+        /* ---------- CSV import ---------- */
+        const csvDlg = $("#csvDlg");
+        const CSV_COLS = {
+          id: ["id", "камерынid", "дугаар"],
+          name: ["name", "нэр", "камерыннэр"],
+          place: ["place", "газар", "байршил"],
+          lat: ["lat", "latitude", "өргөрөг"],
+          lng: ["lng", "lon", "longitude", "уртраг"],
+          rtsp: ["rtsp", "rtspurl", "rtspхаяг"],
+          https: ["https", "httpsurl", "httpsхаяг", "weburl"],
+          rules: ["rules", "дүрэм", "aiva", "aivaдүрэм"],
+        };
+        let csvValid = [];
+        function parseCSV(text) {
+          text = text.replace(/^\ufeff/, "");
+          const first = text.split(/\r?\n/, 1)[0];
+          const delim = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ";" : ",";
+          const rows = [];
+          let row = [], cell = "", q = false;
+          for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (q) {
+              if (ch === '"') {
+                if (text[i + 1] === '"') { cell += '"'; i++; } else q = false;
+              } else cell += ch;
+            } else if (ch === '"') q = true;
+            else if (ch === delim) { row.push(cell); cell = ""; }
+            else if (ch === "\n" || ch === "\r") {
+              if (ch === "\r" && text[i + 1] === "\n") i++;
+              row.push(cell); rows.push(row); row = []; cell = "";
+            } else cell += ch;
+          }
+          if (cell || row.length) { row.push(cell); rows.push(row); }
+          return rows.filter((r) => r.some((c) => c.trim()));
+        }
+        function findPlace(v) {
+          const n = norm(v || "");
+          return PLACES.find((p) => norm(p.label) === n || norm(p.n) === n);
+        }
+        // One row → problems keyed by field (so the editor can show them in place) + the camera it would create.
+        function checkRow(r, seenIds, seenCh) {
+          const e = [], v = (k) => String(r[k] ?? "").trim(), add = (f, m) => e.push({ f, m });
+          const id = v("id").toUpperCase(), name = v("name"), rt = v("rtsp"), hs = v("https");
+          if (!name) add("name", "Нэр хоосон");
+          if (!/^[A-Z]{2,4}-\d{3}$/.test(id)) add("id", "ID буруу (жишээ: BZD-025)");
+          else if (camById(id)) add("id", `${id} аль хэдийн бүртгэлтэй. Өөр ID өгөх эсвэл мөрийг хасна уу`);
+          else if (seenIds.has(id)) add("id", `${id} файлд давхардсан`);
+          else seenIds.add(id);
+          const p = findPlace(v("place"));
+          if (!p) add("place", v("place") ? `«${v("place")}» газар олдсонгүй. Жагсаалтаас сонгоно уу` : "Газар хоосон");
+          const lat = +v("lat").replace(",", "."), lng = +v("lng").replace(",", ".");
+          if (!v("lat") || !isFinite(lat) || Math.abs(lat) > 90) add("lat", "Өргөрөг −90 … 90 тоо байна");
+          if (!v("lng") || !isFinite(lng) || Math.abs(lng) > 180) add("lng", "Уртраг −180 … 180 тоо байна");
+          if (!/^rtsp:\/\/(?:[^\s@\/]+@)?[a-z0-9.\-]+(?::\d{1,5})?(?:\/\S*)?$/i.test(rt))
+            add("rtsp", /^https?:/i.test(rt) ? "RTSP хаяг http биш rtsp:// гэж эхэлнэ" : "RTSP хаяг буруу. Жишээ: rtsp://admin:нууцүг@10.20.1.25:554/stream");
+          else if (rt.includes(PW_MARK)) add("rtsp", `«${PW_MARK}»-ийн оронд камерын нууц үгийг бичнэ үү`);
+          if (!/^https:\/\/[a-z0-9.\-]+(?::\d{1,5})?\/ch\d{2,3}\/stream\/?$/i.test(hs))
+            add("https", `HTTPS хаяг буруу. Жишээ: https://${STREAM_HOST}/ch${pad(30)}/stream`);
+          else {
+            const ch = chOf(hs).toLowerCase(), who = usedChannels(null).get(ch);
+            if (who) add("https", `${ch}-г ${who} ашиглаж байна. ${nextFreeCh(null)} чөлөөтэй`);
+            else if (seenCh.has(ch)) add("https", `${ch} файлд давхардсан`);
+            else seenCh.add(ch);
+          }
+          const rules = [];
+          v("rules").split(/[;|,]/).map((x) => x.trim()).filter(Boolean).forEach((x) => {
+            const k = Object.keys(RULES).find((k) => k === x.toLowerCase() || norm(RULES[k]) === norm(x));
+            if (k) rules.push(k);
+            else add("rules", `«${x}» дүрэм танигдсангүй. Боломжтой: ${Object.values(RULES).join(", ")}`);
+          });
+          return { e, cam: { id, name, place: p?.label, lat: +lat.toFixed(6), lng: +lng.toFixed(6), rtsp: rt, https: hs, rules: rules.length ? rules : ["fight", "crowd"], online: true } };
+        }
+
+        let csvRes = [], csvName = "";
+        const CSV_LABEL = { id: "Камерын ID", name: "Нэр", place: "Газар", lat: "Өргөрөг", lng: "Уртраг", rtsp: "RTSP хаяг", https: "HTTPS хаяг", rules: "AIVA дүрэм" };
+        const MONO_F = ["id", "lat", "lng", "rtsp", "https"], WIDE_F = ["name", "rtsp", "https", "rules"];
+        // Duplicates depend on other rows, so every edit re-checks the whole file.
+        function recheckCSV() {
+          const seenIds = new Set(), seenCh = new Set();
+          csvRes.forEach((x) => {
+            if (x.removed) { x.e = []; return; }
+            Object.assign(x, checkRow(x.raw, seenIds, seenCh));
+            if (x.open) x.e.forEach((y) => x.fields.add(y.f));
+          });
+          csvValid = csvRes.filter((x) => !x.removed && !x.e.length).map((x) => x.cam);
+        }
+        const rowCls = (x) => (x.removed ? "rem" : x.e.length ? "bad" : "");
+        function statusHTML(x, i) {
+          if (x.removed) return `<span class="t2">Хасагдсан</span> · <button type="button" class="linkbtn" data-act="csvUndo" data-i="${i}">Буцаах</button>`;
+          if (!x.e.length) return `<span class="rowok">✓ Зөв</span>`;
+          return `<span class="rowbad">${esc(x.e.map((y) => y.m).join(" · "))}</span>`;
+        }
+        function actHTML(x, i) {
+          if (x.removed || (!x.e.length && !x.open)) return "";
+          return `<button type="button" class="btn sm" data-act="csvEdit" data-i="${i}" aria-expanded="${!!x.open}" aria-controls="csve${i}">${x.open ? "Хаах" : "Засах"}</button>`;
+        }
+        function fieldHTML(x, i, f) {
+          const err = x.e.find((y) => y.f === f), id = `cf${i}_${f}`;
+          return `<div class="fld${WIDE_F.includes(f) ? " wide" : ""}"><label for="${id}">${CSV_LABEL[f]}</label>
+            <input class="in${MONO_F.includes(f) ? " mono" : ""}" id="${id}" data-csv="${i}" data-f="${f}" value="${esc(x.raw[f] ?? "")}"${f === "place" ? ' list="csvPlaces"' : ""} aria-invalid="${!!err}" aria-describedby="${id}E" autocomplete="off" spellcheck="false">
+            <p class="err" id="${id}E"${err ? "" : " hidden"}>${err ? ICON.err + "<span>" + esc(err.m) + "</span>" : ""}</p></div>`;
+        }
+        function editorHTML(x, i) {
+          const order = Object.keys(CSV_LABEL).filter((f) => x.fields.has(f));
+          return `<tr class="edrow" id="csve${i}"><td colspan="6"><div class="ced">${order.map((f) => fieldHTML(x, i, f)).join("")}
+            <div class="cedf"><button type="button" class="btn ghost sm" data-act="csvRemove" data-i="${i}" style="color:var(--crit)">Мөрийг хасах</button><span class="spacer"></span><button type="button" class="btn sm" data-act="csvEdit" data-i="${i}">Болсон</button></div></div></td></tr>`;
+        }
+        function summaryHTML() {
+          const act = csvRes.filter((x) => !x.removed), bad = act.filter((x) => x.e.length).length, rem = csvRes.length - act.length;
+          return `<div class="csvsum"><b>${esc(csvName)}</b><span>${csvRes.length} мөр</span><span class="okc">${ICON.ok} ${csvValid.length} нэмэхэд бэлэн</span>${bad ? `<span class="bad">${ICON.err} ${bad} алдаатай</span>` : ""}${rem ? `<span class="t2">${rem} хасагдсан</span>` : ""}</div>
+            ${bad ? '<p class="hint" style="margin:0 0 8px">Алдаатай мөрийн «Засах» дээр дарж шууд засна уу. Засаагүй мөр нэмэгдэхгүй.</p>' : ""}`;
+        }
+        function syncGo() {
+          const go = $("#csvGo");
+          go.disabled = !csvValid.length;
+          go.textContent = csvValid.length ? `${csvValid.length} камер нэмэх` : "Нэмэх камер алга";
+        }
+        function renderCSV(focusSel) {
+          $("#csvOut").innerHTML = `<div id="csvSum">${summaryHTML()}</div>
+            <datalist id="csvPlaces">${PLACES.map((p) => `<option value="${esc(p.label)}">`).join("")}</datalist>
+            <div class="tw"><table class="tbl mini"><caption class="sr">Файлын мөрүүдийг шалгасан үр дүн</caption>
+            <thead><tr><th scope="col">Мөр</th><th scope="col">ID</th><th scope="col">Нэр</th><th scope="col">Газар</th><th scope="col">Шалгалт</th><th scope="col"><span class="sr">Үйлдэл</span></th></tr></thead><tbody>
+            ${csvRes.map((x, i) => `<tr id="csvr${i}" class="${rowCls(x)}"><td class="mono t2">${x.line}</td><td class="mono" id="csvid${i}">${esc(x.cam.id || "—")}</td><td id="csvnm${i}">${esc(x.cam.name || "—")}</td><td class="t2" id="csvpl${i}">${esc(x.cam.place || x.raw.place || "—")}</td><td id="csvs${i}">${statusHTML(x, i)}</td><td class="act" id="csva${i}">${actHTML(x, i)}</td></tr>${x.open ? editorHTML(x, i) : ""}`).join("")}
+            </tbody></table></div>`;
+          syncGo();
+          if (focusSel) $(focusSel)?.focus();
+        }
+        // While typing: refresh statuses in place so the focused input is never re-rendered.
+        function updateCSV() {
+          const before = csvRes.map((x) => (x.open ? [...x.fields].join() : ""));
+          recheckCSV();
+          $("#csvSum").innerHTML = summaryHTML();
+          const active = document.activeElement?.id;
+          csvRes.forEach((x, j) => {
+            $("#csvr" + j).className = rowCls(x);
+            $("#csvs" + j).innerHTML = statusHTML(x, j);
+            $("#csva" + j).innerHTML = actHTML(x, j);
+            $("#csvid" + j).textContent = x.cam.id || "—";
+            $("#csvnm" + j).textContent = x.cam.name || "—";
+            $("#csvpl" + j).textContent = x.cam.place || x.raw.place || "—";
+            if (!x.open) return;
+            if ([...x.fields].join() !== before[j]) {
+              $("#csve" + j).outerHTML = editorHTML(x, j); // a new field went wrong: show it too
+              return;
+            }
+            x.fields.forEach((f) => {
+              const err = x.e.find((y) => y.f === f), el = $(`#cf${j}_${f}E`);
+              $(`#cf${j}_${f}`).setAttribute("aria-invalid", !!err);
+              el.hidden = !err;
+              el.innerHTML = err ? ICON.err + "<span>" + esc(err.m) + "</span>" : "";
+            });
+          });
+          if (active && document.activeElement?.id !== active) $("#" + active)?.focus();
+          syncGo();
+        }
+        $("#csvOut").addEventListener("input", (e) => {
+          const t = e.target;
+          if (t.dataset.csv == null) return;
+          csvRes[+t.dataset.csv].raw[t.dataset.f] = t.value;
+          updateCSV();
+        });
+        function loadCSV(text, fileName) {
+          const out = $("#csvOut");
+          csvValid = [];
+          csvRes = [];
+          syncGo();
+          $("#csvGo").textContent = "Камер нэмэх";
+          const rows = parseCSV(text);
+          if (rows.length < 2) {
+            out.innerHTML = `<p class="err">${ICON.err}<span>«${esc(fileName)}» файлд өгөгдөл алга. Толгой мөрийн доор дор хаяж нэг камер бичнэ үү.</span></p>`;
+            return;
+          }
+          const head = rows[0].map((h) => norm(h)), idx = {};
+          Object.entries(CSV_COLS).forEach(([k, al]) => { idx[k] = head.findIndex((h) => al.includes(h)); });
+          const missing = Object.keys(CSV_COLS).filter((k) => k !== "rules" && idx[k] < 0);
+          if (missing.length) {
+            out.innerHTML = `<p class="err">${ICON.err}<span>Файлд ${missing.map((k) => `«${k}»`).join(", ")} багана алга. Загвар файлын толгой мөрийг ашиглана уу.</span></p>`;
+            return;
+          }
+          csvName = fileName;
+          csvRes = rows.slice(1).map((cells, i) => {
+            const raw = {};
+            Object.keys(CSV_COLS).forEach((k) => { raw[k] = idx[k] >= 0 ? (cells[idx[k]] ?? "").trim() : ""; });
+            return { line: i + 2, raw, open: false, removed: false, fields: new Set() };
+          });
+          recheckCSV();
+          renderCSV();
+        }
+        function openCSV() {
+          csvValid = [];
+          $("#csvFile").value = "";
+          $("#csvOut").innerHTML = "";
+          $("#csvGo").disabled = true;
+          $("#csvGo").textContent = "Камер нэмэх";
+          csvDlg.showModal();
+        }
+        function readCSVFile(file) {
+          if (!file) return;
+          if (!/\.csv$/i.test(file.name) && file.type !== "text/csv") {
+            $("#csvOut").innerHTML = `<p class="err">${ICON.err}<span>«${esc(file.name)}» нь CSV файл биш байна. Excel-ээс «CSV UTF-8» хэлбэрээр хадгалаад дахин оруулна уу.</span></p>`;
+            return;
+          }
+          file.text().then((t) => loadCSV(t, file.name));
+        }
+        $("#csvFile").addEventListener("change", (e) => readCSVFile(e.target.files[0]));
+        const drop = $("#csvDrop");
+        drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+        drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+        drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); readCSVFile(e.dataTransfer.files[0]); });
+        function downloadText(name, text) {
+          const url = URL.createObjectURL(new Blob(["\ufeff" + text], { type: "text/csv;charset=utf-8" }));
+          const a = Object.assign(document.createElement("a"), { href: url, download: name });
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        const CSV_HEAD = "id,name,place,lat,lng,rtsp,https,rules";
+        const CSV_SAMPLE = [CSV_HEAD,
+          `BZD-081,Сансар · Зүүн хаалга,Баянзүрх › Сансар,47.921900,106.936100,rtsp://admin:Cam81pass@10.20.1.81:554/Streaming/Channels/101,https://${STREAM_HOST}/ch21/stream,fight;crowd`,
+          `BZD-082,Нарантуул зах · Баруун хаалга,Нарантуул зах,47.911800,106.948200,rtsp://admin:Cam82pass@10.20.1.82:554/Streaming/Channels/101,https://${STREAM_HOST}/ch22/stream,Зодоон;Гал`,
+          `BZD-021,Сансарын туннель · А орц,Сансар,47.921200,106.933800,rtsp://admin:x@10.20.1.21:554/Streaming/Channels/101,https://${STREAM_HOST}/ch23/stream,fight`,
+          `BZD-083,Амгалан · Буудал,Амгалан,47.914900,106.991000,http://10.20.1.83/stream,https://${STREAM_HOST}/ch05/stream,crowd`,
+          `BZD-084,13-р хороолол · Тоглоомын талбай,13-р хороолол,47.923800,106.957700,rtsp://admin:Cam84pass@10.20.1.84:554/Streaming/Channels/101,https://${STREAM_HOST}/ch24/stream,collapse;crowd`,
+          `BZD-085,Цайз зах · Зогсоол,Цайз зах,47.909500,106.937400,rtsp://admin:Cam85pass@10.20.1.85:554/Streaming/Channels/101,https://${STREAM_HOST}/ch25/stream,fire`,
+        ].join("\n");
+        function importCSV() {
+          if (!csvValid.length) return;
+          const n = csvValid.length, skipped = csvRes.length - n;
+          [...csvValid].reverse().forEach((c) => cams.unshift(c));
+          flashId = new Set(csvValid.map((c) => c.id));
+          csvValid = [];
+          csvDlg.close();
+          renderCams();
+          fillAuditFilters();
+          toast(`${n} камер нэмэгдлээ${skipped ? ` · ${skipped} мөрийг алгаслаа` : ""}`);
+        }
+
+        /* ---------- camera form ---------- */
+        const camDlg = $("#camDlg"),
+          camForm = $("#camForm");
+        let editing = null,
+          dirty = false,
+          touched = new Set(),
+          tested = null;
+        let pmap = null,
+          pmarker = null,
+          pOthers = null;
+        const F = {
+          name: $("#fName"),
+          id: $("#fId"),
+          rtsp: $("#fRtsp"),
+          https: $("#fHttps"),
+          place: $("#fPlace"),
+          lat: $("#fLat"),
+          lng: $("#fLng"),
+        };
+        $("#fRules").innerHTML = Object.entries(RULES)
+          .map(
+            ([k, l]) =>
+              `<label class="cb"><input type="checkbox" name="rule" value="${k}">${l}</label>`,
+          )
+          .join("");
+
+        function usedChannels(except) {
+          return new Map(
+            cams
+              .filter((c) => c.id !== except)
+              .map((c) => [chOf(c.https).toLowerCase(), c.id]),
+          );
+        }
+        function nextFreeCh(except) {
+          const u = usedChannels(except);
+          for (let n = 1; n < 999; n++) {
+            const k = "ch" + pad(n);
+            if (!u.has(k)) return k;
+          }
+        }
+        function nextId() {
+          const nums = cams
+            .filter((c) => c.id.startsWith("BZD-"))
+            .map((c) => +c.id.slice(4));
+          let n = Math.max(0, ...nums) + 1;
+          return "BZD-" + pad(n, 3);
+        }
+
+        function openCam(id) {
+          editing = id ? camById(id) : null;
+          dirty = false;
+          touched = new Set();
+          tested = null;
+          camForm.reset();
+          $("#camDlgT").textContent = editing ? "Камер засах" : "Камер нэмэх";
+          $("#camSubmit").textContent = editing
+            ? "Өөрчлөлт хадгалах"
+            : "Камер нэмэх";
+          $("#camErrs").hidden = true;
+          $("#fRtspT").innerHTML = "";
+          $("#fRtspT").className = "test";
+          $$("#camForm .err").forEach((e) => (e.hidden = true));
+          $$("#camForm [aria-invalid]").forEach((e) =>
+            e.removeAttribute("aria-invalid"),
+          );
+          $("#geoW").hidden = true;
+          if (editing) {
+            const c = editing;
+            F.name.value = c.name;
+            F.id.value = c.id;
+            F.rtsp.value = c.rtsp;
+            F.https.value = c.https;
+            F.place.value = c.place;
+            F.lat.value = c.lat.toFixed(6);
+            F.lng.value = c.lng.toFixed(6);
+            $$("#fRules input").forEach(
+              (i) => (i.checked = c.rules.includes(i.value)),
+            );
+          } else {
+            F.id.value = nextId();
+            $$("#fRules input").forEach(
+              (i) => (i.checked = ["fight", "crowd"].includes(i.value)),
+            );
+          }
+          camDlg.showModal();
+          requestAnimationFrame(() => {
+            initMap();
+            syncPin(true);
+            F.name.focus();
+          });
+        }
+        function initMap() {
+          if (!window.L) {
+            $("#pickMap").innerHTML =
+              '<p class="hint" style="padding:12px">Газрын зураг ачаалагдсангүй. Өргөрөг, уртрагийг тоогоор бичнэ үү.</p>';
+            return;
+          }
+          if (!pmap) {
+            pmap = L.map("pickMap", {
+              zoomControl: true,
+              attributionControl: false,
+              minZoom: 12,
+              maxZoom: 19,
+            }).setView([47.917, 106.945], 13);
+            buildBase(pmap);
+            const z = () => {
+              $("#pickMap").dataset.z = Math.floor(pmap.getZoom());
+            };
+            pmap.on("zoomend", z);
+            z();
+            pOthers = L.layerGroup().addTo(pmap);
+            pmarker = L.marker([47.917, 106.945], {
+              draggable: true,
+              keyboard: true,
+              title: "Камерын байрлал",
+              icon: L.divIcon({
+                className: "",
+                html: '<div class="pin"></div>',
+                iconSize: [18, 18],
+                iconAnchor: [9, 18],
+              }),
+            });
+            pmap.on("click", (e) => setLL(e.latlng.lat, e.latlng.lng));
+            pmarker.on("dragend", () => {
+              const p = pmarker.getLatLng();
+              setLL(p.lat, p.lng);
+            });
+          }
+          pOthers.clearLayers();
+          cams
+            .filter((c) => c !== editing)
+            .forEach((c) =>
+              L.marker([c.lat, c.lng], {
+                interactive: true,
+                keyboard: false,
+                icon: L.divIcon({
+                  className: "",
+                  html: '<div class="cam-o"></div>',
+                  iconSize: [9, 9],
+                }),
+              })
+                .bindTooltip(c.id + " · " + c.name)
+                .addTo(pOthers),
+            );
+          pmap.invalidateSize();
+        }
+        // Schematic mock base map (same as cctv-monitor.html) — no tile server, works offline.
+        function buildBase(map) {
+          const P = { interactive: false },
+            r = rng(42);
+          const top = [],
+            bot = [];
+          for (let lng = 106.84; lng <= 107.04; lng += 0.004) {
+            const lat =
+              47.8915 +
+              0.0035 * Math.sin(lng * 70) +
+              0.0015 * Math.sin(lng * 210);
+            top.push([lat + 0.0009, lng]);
+            bot.unshift([lat - 0.0009, lng]);
+          }
+          L.polygon(top.concat(bot), {
+            ...P,
+            stroke: false,
+            fillColor: "#10202b",
+            fillOpacity: 1,
+          }).addTo(map);
+          [
+            [
+              [47.9085, 106.912],
+              [47.9085, 106.926],
+              [47.904, 106.927],
+              [47.9035, 106.911],
+            ],
+            [
+              [47.93, 106.94],
+              [47.9305, 106.948],
+              [47.928, 106.949],
+              [47.9276, 106.9405],
+            ],
+            [
+              [47.9006, 106.948],
+              [47.9012, 106.964],
+              [47.8985, 106.965],
+              [47.898, 106.947],
+            ],
+          ].forEach((p) =>
+            L.polygon(p, {
+              ...P,
+              stroke: false,
+              fillColor: "#121c18",
+              fillOpacity: 1,
+            }).addTo(map),
+          );
+          for (let lat = 47.897; lat < 47.94; lat += 0.0032) {
+            let lng = 106.885;
+            while (lng < 107.01) {
+              const len = 0.004 + r() * 0.012;
+              if (r() > 0.25)
+                L.polyline(
+                  [
+                    [lat + (r() - 0.5) * 0.0006, lng],
+                    [lat + (r() - 0.5) * 0.0006, lng + len],
+                  ],
+                  { ...P, color: "#1c252e", weight: 1.2 },
+                ).addTo(map);
+              lng += len + r() * 0.004;
+            }
+          }
+          for (let lng = 106.886; lng < 107.01; lng += 0.0046) {
+            let lat = 47.897;
+            while (lat < 47.94) {
+              const len = 0.003 + r() * 0.008;
+              if (r() > 0.3)
+                L.polyline(
+                  [
+                    [lat, lng + (r() - 0.5) * 0.0008],
+                    [lat + len, lng + (r() - 0.5) * 0.0008],
+                  ],
+                  { ...P, color: "#1c252e", weight: 1.2 },
+                ).addTo(map);
+              lat += len + r() * 0.003;
+            }
+          }
+          const road = (pts, w = 4) => {
+            L.polyline(pts, { ...P, color: "#0b0f12", weight: w + 3 }).addTo(
+              map,
+            );
+            L.polyline(pts, { ...P, color: "#2d3842", weight: w }).addTo(map);
+          };
+          road(
+            [
+              [47.9158, 106.86],
+              [47.917, 106.9],
+              [47.9178, 106.93],
+              [47.9173, 106.95],
+              [47.9165, 106.965],
+              [47.9152, 106.99],
+              [47.9138, 107.02],
+            ],
+            5,
+          );
+          road(
+            [
+              [47.9235, 106.9],
+              [47.9232, 106.93],
+              [47.9236, 106.96],
+              [47.9228, 106.99],
+            ],
+            3,
+          );
+          road(
+            [
+              [47.9118, 106.895],
+              [47.9116, 106.93],
+              [47.9112, 106.96],
+              [47.91, 106.99],
+            ],
+            3,
+          );
+          road(
+            [
+              [47.905, 106.9],
+              [47.9058, 106.94],
+              [47.9062, 106.975],
+              [47.9055, 107.0],
+            ],
+            3.5,
+          );
+          road(
+            [
+              [47.936, 106.9175],
+              [47.9195, 106.9175],
+              [47.909, 106.918],
+              [47.899, 106.9195],
+            ],
+            3.5,
+          );
+          road(
+            [
+              [47.933, 106.9352],
+              [47.9215, 106.935],
+              [47.91, 106.9355],
+              [47.9, 106.9365],
+            ],
+            3.5,
+          );
+          road(
+            [
+              [47.932, 106.9555],
+              [47.9175, 106.9555],
+              [47.904, 106.956],
+              [47.896, 106.9565],
+            ],
+            3,
+          );
+          road(
+            [
+              [47.93, 106.97],
+              [47.9175, 106.97],
+              [47.906, 106.9705],
+            ],
+            2.5,
+          );
+          L.polyline(
+            [
+              [47.945, 106.9285],
+              [47.925, 106.929],
+              [47.912, 106.93],
+              [47.9, 106.928],
+              [47.889, 106.93],
+            ],
+            { ...P, color: "#3a4650", weight: 1.2, dashArray: "6 6" },
+          ).addTo(map);
+          const lab = (lat, lng, txt, cls) =>
+            L.marker([lat, lng], {
+              interactive: false,
+              keyboard: false,
+              icon: L.divIcon({
+                className: "ml " + cls,
+                html: "<span>" + txt + "</span>",
+                iconSize: null,
+              }),
+            }).addTo(map);
+          lab(47.933, 106.915, "СҮХБААТАР", "ml-dist");
+          lab(47.933, 106.97, "БАЯНЗҮРХ", "ml-dist");
+          lab(47.893, 106.935, "Туул гол", "ml-street");
+          [
+            ["Сансар", 47.9222, 106.9318],
+            ["Нарантуул", 47.915, 106.948],
+            ["13-р хороолол", 47.9262, 106.959],
+            ["Зүүн айл", 47.915, 106.964],
+            ["Амгалан", 47.913, 106.991],
+            ["7-р хороо", 47.9295, 106.942],
+            ["Сүхбаатарын талбай", 47.9205, 106.915],
+            ["Цайз", 47.9088, 106.9395],
+          ].forEach((a) => lab(a[1], a[2], a[0], "ml-area"));
+          [
+            ["Энхтайвны өргөн чөлөө", 47.9182, 106.942],
+            ["Энхтайвны өргөн чөлөө", 47.916, 106.978],
+            ["Токиогийн гудамж", 47.924, 106.946],
+            ["Сөүлийн гудамж", 47.9123, 106.927],
+            ["Нарны зам", 47.9064, 106.946],
+          ].forEach((a) => lab(a[1], a[2], a[0], "ml-street"));
+        }
+        function setLL(lat, lng) {
+          F.lat.value = lat.toFixed(6);
+          F.lng.value = lng.toFixed(6);
+          dirty = true;
+          touched.add("lat");
+          touched.add("lng");
+          validateCam();
+          syncPin(false);
+        }
+        function syncPin(fly) {
+          if (!pmap) return;
+          const lat = parseFloat(F.lat.value),
+            lng = parseFloat(F.lng.value);
+          if (
+            isFinite(lat) &&
+            isFinite(lng) &&
+            Math.abs(lat) <= 90 &&
+            Math.abs(lng) <= 180
+          ) {
+            pmarker.setLatLng([lat, lng]);
+            if (!pmap.hasLayer(pmarker)) pmarker.addTo(pmap);
+            if (fly) pmap.setView([lat, lng], 16);
+            else if (!pmap.getBounds().contains([lat, lng]))
+              pmap.panTo([lat, lng]);
+          } else if (pmap.hasLayer(pmarker)) pmap.removeLayer(pmarker);
+        }
+
+        /* validation — messages say what is wrong and how to fix it */
+        function validateCam() {
+          const e = {},
+            w = [];
+          const name = F.name.value.trim(),
+            id = F.id.value.trim().toUpperCase(),
+            rt = F.rtsp.value.trim(),
+            hs = F.https.value.trim();
+          if (!name) e.name = "Камерын нэрийг оруулна уу.";
+          else if (
+            cams.some(
+              (c) =>
+                c !== editing && c.name.toLowerCase() === name.toLowerCase(),
+            )
+          )
+            e.name = `«${name}» нэртэй камер аль хэдийн бүртгэлтэй байна. Хэсгийг нь нэмж ялгана уу, жишээ нь «· Б орц».`;
+          if (!id) e.id = "Камерын ID оруулна уу.";
+          else if (!/^[A-Z]{2,4}-\d{3}$/.test(id))
+            e.id =
+              "ID нь 2–4 латин үсэг, зураас, 3 оронтой тооноос бүрдэнэ. Жишээ: BZD-025.";
+          else if (cams.some((c) => c !== editing && c.id === id))
+            e.id = `${id} ID-г өөр камер ашиглаж байна. ${nextId()} чөлөөтэй.`;
+          if (!rt) e.rtsp = "RTSP хаягийг оруулна уу.";
+          else if (rt.includes(PW_MARK))
+            e.rtsp = `Хаяг доторх «${PW_MARK}»-ийн оронд камерын нууц үгийг бичнэ үү.`;
+          else if (!/^rtsp:\/\//i.test(rt))
+            e.rtsp = /^https?:\/\//i.test(rt)
+              ? "Энэ нь HTTP хаяг байна. Энд камерын rtsp:// хаягийг бичнэ үү. HTTPS хаягийг доорх талбарт бичнэ."
+              : "Хаяг rtsp:// гэж эхлэх ёстой. Жишээ: rtsp://admin:нууцүг@10.20.1.25:554/stream";
+          else if (
+            !/^rtsp:\/\/(?:[^\s@\/]+@)?[a-z0-9.\-]+(?::\d{1,5})?(?:\/\S*)?$/i.test(
+              rt,
+            )
+          )
+            e.rtsp =
+              "Камерын IP хаяг олдсонгүй. rtsp:// -ын дараа (нэвтрэх нэр:нууц үг@) IP хаягийг бичнэ үү.";
+          else if (!/@/.test(rt))
+            w.push([
+              "rtsp",
+              "Нэвтрэх нэр, нууц үг бичигдээгүй байна. Камер нэвтрэлт шаарддаг бол холбогдохгүй.",
+            ]);
+          if (!hs) e.https = "HTTPS хаягийг оруулна уу.";
+          else if (/^http:\/\//i.test(hs))
+            e.https =
+              "Хаяг https:// гэж эхлэх ёстой. http хаягаар дамжуулсан дүрсийг хөтөч хаадаг.";
+          else if (
+            !/^https:\/\/[a-z0-9.\-]+(?::\d{1,5})?\/ch\d{2,3}\/stream\/?$/i.test(
+              hs,
+            )
+          )
+            e.https = `Бүтэц буруу байна. Хаяг ...:9889/ch##/stream гэж төгсөх ёстой. Жишээ: https://${STREAM_HOST}/${nextFreeCh(editing?.id)}/stream`;
+          else {
+            const ch = chOf(hs).toLowerCase(),
+              who = usedChannels(editing?.id).get(ch);
+            if (who)
+              e.https = `${ch} сувгийг ${who} камер ашиглаж байна. Өөр суваг сонгоно уу — ${nextFreeCh(editing?.id)} чөлөөтэй.`;
+          }
+          const pl = F.place.value.trim();
+          if (!pl) e.place = "Газрыг жагсаалтаас сонгоно уу.";
+          else if (!PLACES.some((p) => p.label === pl))
+            e.place =
+              "Жагсаалтад байхгүй газар байна. Бичиж хайгаад жагсаалтаас сонгоно уу.";
+          const la = F.lat.value.trim(),
+            lo = F.lng.value.trim(),
+            lat = +la.replace(",", "."),
+            lng = +lo.replace(",", ".");
+          const swapped =
+            isFinite(lat) &&
+            isFinite(lng) &&
+            lat >= 87 &&
+            lat <= 120 &&
+            lng >= 41 &&
+            lng <= 53;
+          if (!la)
+            e.lat = "Өргөрөгийг оруулна уу, эсвэл газрын зураг дээр дарна уу.";
+          else if (swapped)
+            e.lat =
+              "Өргөрөг, уртрагийг сольж бичсэн бололтой. «Сольж засах» товчийг дарна уу.";
+          else if (!isFinite(lat))
+            e.lat = "Өргөрөг тоо байх ёстой. Жишээ: 47.921200";
+          else if (Math.abs(lat) > 90)
+            e.lat =
+              "Өргөрөг −90-аас 90-ийн хооронд байна." +
+              (Math.abs(lat) <= 180
+                ? " Уртрагтай сольж бичсэн байж магадгүй."
+                : "");
+          if (!lo)
+            e.lng = "Уртрагийг оруулна уу, эсвэл газрын зураг дээр дарна уу.";
+          else if (!isFinite(lng))
+            e.lng = "Уртраг тоо байх ёстой. Жишээ: 106.933800";
+          else if (Math.abs(lng) > 180)
+            e.lng = "Уртраг −180-аас 180-ийн хооронд байна.";
+          let geo = "";
+          if (swapped) geo = "swap";
+          else if (!e.lat && !e.lng && la && lo) {
+            if (!(lat >= 41.5 && lat <= 52.2 && lng >= 87.7 && lng <= 120))
+              geo = "out";
+          }
+          return { e, w, geo };
+        }
+        function showCamErrors(res, all) {
+          const map = {
+            name: F.name,
+            id: F.id,
+            rtsp: F.rtsp,
+            https: F.https,
+            place: F.place,
+            lat: F.lat,
+            lng: F.lng,
+          };
+          const eid = {
+            name: "fNameE",
+            id: "fIdE",
+            rtsp: "fRtspE",
+            https: "fHttpsE",
+            place: "fPlaceE",
+            lat: "fLatE",
+            lng: "fLngE",
+          };
+          Object.keys(map).forEach((k) => {
+            const show = res.e[k] && (all || touched.has(k)),
+              el = $("#" + eid[k]);
+            el.hidden = !show;
+            el.innerHTML = show
+              ? ICON.err + "<span>" + esc(res.e[k]) + "</span>"
+              : "";
+            if (show) map[k].setAttribute("aria-invalid", "true");
+            else map[k].removeAttribute("aria-invalid");
+            el.className = "err";
+          });
+          const rw = res.w.find((x) => x[0] === "rtsp"),
+            re = $("#fRtspE");
+          if (!res.e.rtsp && rw && touched.has("rtsp")) {
+            re.hidden = false;
+            re.className = "wrn";
+            re.innerHTML = ICON.warn + "<span>" + esc(rw[1]) + "</span>";
+          }
+          const g = $("#geoW");
+          if (res.geo && touched.has("lat") && touched.has("lng")) {
+            g.hidden = false;
+            g.innerHTML =
+              res.geo === "swap"
+                ? `${ICON.warn}<span>Өргөрөг ${esc(F.lat.value)}, уртраг ${esc(F.lng.value)} гэж бичигдсэн байна. Улаанбаатарын өргөрөг ~47.9, уртраг ~106.9.</span><button type="button" class="linkbtn" data-act="swapLL">Сольж засах</button>`
+                : `${ICON.warn}<span>Энэ цэг Монголын нутгаас гадна байна. Утгаа шалгана уу. Зөв бол хадгалж болно.</span>`;
+          } else g.hidden = true;
+        }
+        // Standard addresses: camera IP follows the ID number (BZD-073 → 10.20.1.73), stream uses the next free channel.
+        const PW_MARK = "НУУЦ_ҮГ";
+        function stdFill() {
+          const n = parseInt((/-(\d+)$/.exec(F.id.value.trim()) || [])[1], 10);
+          const ip = n >= 1 && n <= 254 ? "10.20.1." + n : "10.20.1.";
+          F.rtsp.value = `rtsp://admin:${PW_MARK}@${ip}:554/Streaming/Channels/101`;
+          F.https.value = `https://${STREAM_HOST}/${nextFreeCh(editing?.id)}/stream`;
+          touched.add("https");
+          dirty = true;
+          tested = null;
+          $("#fRtspT").innerHTML = "";
+          validateLive();
+          const i = F.rtsp.value.indexOf(PW_MARK);
+          F.rtsp.focus();
+          F.rtsp.setSelectionRange(i, i + PW_MARK.length);
+          toast(
+            ip.endsWith(".")
+              ? "Хаяг бөглөгдлөө. Камерын ID-аас IP тодорхойлж чадсангүй — IP болон нууц үгийг оруулна уу."
+              : "Хаяг бөглөгдлөө. Сонгогдсон хэсэгт камерын нууц үгийг бичнэ үү.",
+          );
+        }
+        function validateLive() {
+          showCamErrors(validateCam(), false);
+        }
+        Object.entries(F).forEach(([k, el]) => {
+          el.addEventListener("input", () => {
+            dirty = true;
+            if (touched.has(k)) validateLive();
+            if (k === "rtsp") {
+              tested = null;
+              $("#fRtspT").innerHTML = "";
+            }
+          });
+          el.addEventListener("blur", () => {
+            if (k === "place") return;
+            if (el.value.trim()) touched.add(k);
+            validateLive();
+          });
+        });
+        camForm.addEventListener("change", () => {
+          dirty = true;
+        });
+        // Accept "47.92, 106.93" or a Google Maps link pasted into either coordinate field.
+        [F.lat, F.lng].forEach((el) =>
+          el.addEventListener("input", () => {
+            const v = el.value,
+              m = /@?(-?\d{1,3}\.\d+)\s*[,; ]\s*(-?\d{1,3}\.\d+)/.exec(v);
+            if (m) {
+              F.lat.value = (+m[1]).toFixed(6);
+              F.lng.value = (+m[2]).toFixed(6);
+              touched.add("lat");
+              touched.add("lng");
+              F.lng.focus();
+            }
+            validateLive();
+            syncPin(!!m);
+          }),
+        );
+
+        /* place combobox */
+        const pl = $("#fPlaceList");
+        let plIdx = -1,
+          plItems = [];
+        function renderPlaces(open = true) {
+          const q = norm(F.place.value);
+          plItems = PLACES.filter((p) => !q || norm(p.label).includes(q));
+          pl.innerHTML = plItems.length
+            ? plItems
+                .map((p, i) => {
+                  const n = cams.filter((c) => c.place === p.label).length;
+                  return `<li role="option" id="plo${i}" data-i="${i}" aria-selected="${i === plIdx}"><span>${esc(p.n)}</span><span class="d">${esc(p.d)}</span><span class="k">${n} камер</span></li>`;
+                })
+                .join("")
+            : '<li class="none" role="option" aria-disabled="true">Тохирох газар олдсонгүй</li>';
+          pl.hidden = !open;
+          F.place.setAttribute("aria-expanded", open);
+          if (plIdx >= 0) {
+            F.place.setAttribute("aria-activedescendant", "plo" + plIdx);
+            $("#plo" + plIdx)?.scrollIntoView({ block: "nearest" });
+          } else F.place.removeAttribute("aria-activedescendant");
+        }
+        function pickPlace(i) {
+          const p = plItems[i];
+          if (!p) return;
+          F.place.value = p.label;
+          plIdx = -1;
+          renderPlaces(false);
+          dirty = true;
+          touched.add("place");
+          if (!F.lat.value && !F.lng.value) {
+            F.lat.value = p.lat.toFixed(6);
+            F.lng.value = p.lng.toFixed(6);
+            toast(
+              "Байршлын төвөөр урьдчилан бөглөлөө. Яг цэгийг газрын зураг дээр заана уу.",
+            );
+          }
+          validateLive();
+          if (pmap) {
+            pmap.setView([p.lat, p.lng], 16);
+            syncPin(false);
+          }
+        }
+        F.place.addEventListener("focus", () => renderPlaces(true));
+        F.place.addEventListener("input", () => {
+          plIdx = 0;
+          renderPlaces(true);
+        });
+        F.place.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            plIdx = Math.min(plItems.length - 1, plIdx + 1);
+            renderPlaces(true);
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            plIdx = Math.max(0, plIdx - 1);
+            renderPlaces(true);
+          } else if (e.key === "Enter" && !pl.hidden) {
+            e.preventDefault();
+            pickPlace(Math.max(0, plIdx));
+          } else if (e.key === "Escape" && !pl.hidden) {
+            e.preventDefault();
+            e.stopPropagation();
+            renderPlaces(false);
+          }
+        });
+        F.place.addEventListener("blur", () =>
+          setTimeout(() => {
+            renderPlaces(false);
+            touched.add("place");
+            validateLive();
+          }, 120),
+        );
+        pl.addEventListener("mousedown", (e) => {
+          const li = e.target.closest("li[data-i]");
+          if (li) {
+            e.preventDefault();
+            pickPlace(+li.dataset.i);
+          }
+        });
+
+        function testRtsp() {
+          const res = validateCam();
+          touched.add("rtsp");
+          showCamErrors(res, false);
+          const box = $("#fRtspT");
+          if (res.e.rtsp) {
+            F.rtsp.focus();
+            return;
+          }
+          const host = hostOf(F.rtsp.value.trim());
+          box.className = "test run";
+          box.innerHTML =
+            '<span class="spin" aria-hidden="true"></span>Холбогдож байна…';
+          setTimeout(() => {
+            const bad =
+              /\.(0|99|250)(:|$)/.test(host) || /wrong|bad/i.test(F.rtsp.value);
+            tested = !bad;
+            box.className = "test " + (bad ? "bad" : "ok");
+            box.innerHTML = bad
+              ? `${ICON.err}<span>Камер хариу өгсөнгүй. ${esc(host)} хаягт 5 секундийн дотор холбогдсонгүй. IP, порт, сүлжээгээ шалгана уу.</span>`
+              : `${ICON.ok}<span>Холбогдлоо · 1920×1080 · H.264 · 25 кадр/с</span>`;
+          }, 900);
+        }
+
+        camForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          Object.keys(F).forEach((k) => touched.add(k));
+          const res = validateCam();
+          showCamErrors(res, true);
+          const keys = Object.keys(res.e),
+            sum = $("#camErrs");
+          if (keys.length) {
+            const lab = {
+              name: ["fName", "Камерын нэр"],
+              id: ["fId", "Камерын ID"],
+              rtsp: ["fRtsp", "RTSP хаяг"],
+              https: ["fHttps", "HTTPS хаяг"],
+              place: ["fPlace", "Газар"],
+              lat: ["fLat", "Өргөрөг"],
+              lng: ["fLng", "Уртраг"],
+            };
+            sum.hidden = false;
+            sum.innerHTML = `<b>${keys.length} талбарыг засна уу</b><ul>${keys.map((k) => `<li><a href="#${lab[k][0]}" data-focus="${lab[k][0]}">${lab[k][1]}</a>: ${esc(res.e[k])}</li>`).join("")}</ul>`;
+            sum.focus();
+            return;
+          }
+          sum.hidden = true;
+          const data = {
+            id: F.id.value.trim().toUpperCase(),
+            name: F.name.value.trim(),
+            place: F.place.value.trim(),
+            lat: +(+F.lat.value.replace(",", ".")).toFixed(6),
+            lng: +(+F.lng.value.replace(",", ".")).toFixed(6),
+            rtsp: F.rtsp.value.trim(),
+            https: F.https.value.trim(),
+            rules: $$("#fRules input:checked").map((i) => i.value),
+          };
+          if (editing) {
+            Object.assign(editing, data);
+            toast(`${data.id} камерын өөрчлөлт хадгалагдлаа`);
+          } else {
+            cams.unshift({ ...data, online: tested !== false });
+            toast(
+              `${data.id} камер нэмэгдлээ${tested === false ? " · холболт амжилтгүй байгааг анхаарна уу" : ""}`,
+            );
+          }
+          flashId = data.id;
+          dirty = false;
+          camDlg.close();
+          renderCams();
+          fillAuditFilters();
+        });
+        $("#camErrs").addEventListener("click", (e) => {
+          const a = e.target.closest("[data-focus]");
+          if (a) {
+            e.preventDefault();
+            $("#" + a.dataset.focus).focus();
+          }
+        });
+
+        /* =========================================================
+   Operators page
+   ========================================================= */
+        const OF = { q: "", st: "active" };
+        function renderOps() {
+          const act = ops.filter((o) => o.active),
+            rev = ops.filter((o) => !o.active);
+          $("#opSub").textContent =
+            `${act.length} идэвхтэй оператор · ${act.filter((o) => o.role === "owner").length} админ`;
+          $("#navOps").textContent = act.length;
+          $("#opChips").innerHTML = [
+            ["active", "Идэвхтэй", act.length],
+            ["revoked", "Эрх цуцлагдсан", rev.length],
+          ]
+            .map(
+              ([k, l, n]) =>
+                `<button class="chip" data-act="opSt" data-v="${k}" aria-pressed="${OF.st === k}">${l}<span class="c">${n}</span></button>`,
+            )
+            .join("");
+          const q = norm(OF.q),
+            owners = act.filter((o) => o.role === "owner").length;
+          const list = ops.filter(
+            (o) =>
+              (OF.st === "active") === o.active &&
+              (!q || norm(o.name + o.login).includes(q)),
+          );
+          const tb = $("#opTbl tbody");
+          if (!list.length) {
+            tb.innerHTML = `<tr><td colspan="5"><div class="empty"><b>${OF.st === "revoked" ? "Эрх цуцлагдсан оператор алга" : "Тохирох оператор олдсонгүй"}</b>${OF.st === "revoked" ? "Эрхийг нь цуцалсан операторууд энд харагдана. Шаардлагатай бол эндээс сэргээнэ." : "Хайлтаа өөрчилнө үү."}</div></td></tr>`;
+            return;
+          }
+          tb.innerHTML = list
+            .map((o) => {
+              const lastOwner = o.role === "owner" && owners <= 1,
+                block = o.me
+                  ? "Өөрийн эрхийг цуцлах боломжгүй"
+                  : lastOwner
+                    ? "Сүүлийн админы эрхийг цуцлах боломжгүй. Эхлээд өөр хүнд админ эрх өгнө үү."
+                    : "";
+              return `<tr data-id="${o.id}"${"op" + o.id === flashId ? ' class="flash"' : ""}>
+    <td><div class="opc"><span class="av" aria-hidden="true">${esc(initials(o.name))}</span><span class="t1">${esc(o.name)}</span>${o.me ? '<span class="tag me">Та</span>' : ""}</div></td>
+    <td class="mono t2">${esc(o.login)}</td>
+    <td><span class="tag ${o.role}">${ROLES[o.role].l}</span></td>
+    <td class="t2">${o.active ? (o.last ? `<span title="${fmtD(new Date(o.last))} ${fmtT(new Date(o.last))}">${ago(o.last)}</span>` : "Нэвтрээгүй") : `Цуцалсан: ${fmtD(new Date(o.revokedAt))}`}</td>
+    <td class="act">${
+      o.active
+        ? `<button class="btn ghost sm" data-act="opEdit" data-id="${o.id}">${ICON.edit}Засах</button><button class="btn ghost sm" data-act="opLog" data-id="${o.id}">${ICON.log}Үйлдэл</button><span class="gap"></span><button class="btn ghost sm" data-act="opRevoke" data-id="${o.id}" ${block ? `aria-disabled="true" title="${esc(block)}"` : ""} style="${block ? "" : "color:var(--crit)"}">Эрх цуцлах</button>`
+        : `<button class="btn ghost sm" data-act="opLog" data-id="${o.id}">${ICON.log}Үйлдэл</button><button class="btn sm" data-act="opRestore" data-id="${o.id}">${ICON.restore}Сэргээх</button>`
+    }</td></tr>`;
+            })
+            .join("");
+          flashId = null;
+        }
+        $("#opQ").addEventListener("input", (e) => {
+          OF.q = e.target.value;
+          renderOps();
+        });
+
+        const opDlg = $("#opDlg"),
+          opForm = $("#opForm");
+        let opEditing = null;
+        opForm.addEventListener("change", () => {
+          dirty = true;
+        });
+        opForm.addEventListener("input", () => {
+          dirty = true;
+        });
+        function openOp(id) {
+          opEditing = id ? opById(id) : null;
+          dirty = false;
+          opForm.reset();
+          setPwVisible(false);
+          $("#opDlgT").textContent = opEditing
+            ? "Оператор засах"
+            : "Оператор нэмэх";
+          $("#opSubmit").textContent = opEditing
+            ? "Өөрчлөлт хадгалах"
+            : "Оператор нэмэх";
+          const selfOwner = opEditing?.me;
+          $("#oRoles").innerHTML = Object.entries(ROLES)
+            .map(
+              ([k, r]) =>
+                `<label class="rc"><input type="radio" name="role" value="${k}" ${selfOwner && k !== "owner" ? "disabled" : ""}><span><b>${r.l}</b><span>${r.d}</span></span></label>`,
+            )
+            .join("");
+          $("#oRoleH").hidden = !selfOwner;
+          $("#oRoleH").textContent =
+            "Өөрийн админ эрхийг бууруулах боломжгүй. Өөр админ таны эрхийг өөрчилнө.";
+          if (opEditing) {
+            $("#oName").value = opEditing.name;
+            $("#oLogin").value = opEditing.login;
+            $("#oLogin").readOnly = true;
+            opForm.role.value = opEditing.role;
+          } else {
+            $("#oLogin").readOnly = false;
+            opForm.role.value = "viewer";
+          }
+          // Editing: password is optional — blank keeps the current one.
+          $("#oPwL").innerHTML = opEditing
+            ? "Шинэ нууц үг"
+            : 'Нууц үг<span class="req" aria-hidden="true">*</span>';
+          $("#oPwH").textContent = opEditing
+            ? "Солихгүй бол хоосон үлдээнэ үү. Шинэ нууц үг: 8+ тэмдэгт, үсэг болон тоо орсон."
+            : "Хамгийн багадаа 8 тэмдэгт, үсэг болон тоо орсон байна.";
+          $("#oPw").required = !opEditing;
+          $$("#opForm .err").forEach((e) => (e.hidden = true));
+          $("#opErrs").hidden = true;
+          $$("#opForm [aria-invalid]").forEach((e) =>
+            e.removeAttribute("aria-invalid"),
+          );
+          opDlg.showModal();
+          requestAnimationFrame(() => $("#oName").focus());
+        }
+        function setPwVisible(on) {
+          $("#oPw").type = on ? "text" : "password";
+          const b = $('[data-act="pwToggle"]');
+          b.textContent = on ? "Нуух" : "Харуулах";
+          b.setAttribute("aria-pressed", on);
+        }
+        opForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const name = $("#oName").value.trim(),
+            login = $("#oLogin").value.trim(),
+            role = opForm.role.value,
+            pw = $("#oPw").value,
+            er = {};
+          if (!name) er.oName = "Овог, нэрийг оруулна уу.";
+          if (!opEditing) {
+            if (!login) er.oLogin = "Нэвтрэх нэрийг оруулна уу.";
+            else if (!/^[a-z][a-z0-9._]{2,31}$/.test(login))
+              er.oLogin =
+                "Латин жижиг үсгээр эхэлж, зөвхөн жижиг үсэг, тоо, «.» «_» агуулна. 3–32 тэмдэгт.";
+            else if (ops.some((o) => o.login === login))
+              er.oLogin = `«${login}» нэвтрэх нэр бүртгэлтэй байна. Өөр нэр сонгоно уу, жишээ нь ${login}2.`;
+          }
+          if (!pw) {
+            if (!opEditing) er.oPw = "Нууц үгийг оруулна уу.";
+          } else if (pw.length < 8)
+            er.oPw = `Нууц үг ${pw.length} тэмдэгттэй байна. Хамгийн багадаа 8 тэмдэгт оруулна уу.`;
+          else if (!/[a-zа-яөү]/i.test(pw) || !/\d/.test(pw))
+            er.oPw = "Нууц үгэнд үсэг болон тоо хоёулаа орсон байх ёстой.";
+          else if (
+            pw.toLowerCase() === (login || opEditing?.login || "").toLowerCase()
+          )
+            er.oPw = "Нууц үг нэвтрэх нэртэй ижил байж болохгүй.";
+          ["oName", "oLogin", "oPw"].forEach((k) => {
+            const el = $("#" + k + "E");
+            el.hidden = !er[k];
+            el.innerHTML = er[k]
+              ? ICON.err + "<span>" + esc(er[k]) + "</span>"
+              : "";
+            const inp = $("#" + k);
+            if (inp && inp.tagName === "INPUT") {
+              if (er[k]) inp.setAttribute("aria-invalid", "true");
+              else inp.removeAttribute("aria-invalid");
+            }
+          });
+          const ks = Object.keys(er);
+          if (ks.length) {
+            const s = $("#opErrs");
+            s.hidden = false;
+            s.innerHTML = `<b>${ks.length} талбарыг засна уу</b><ul>${ks.map((k) => `<li>${esc(er[k])}</li>`).join("")}</ul>`;
+            s.focus();
+            return;
+          }
+          if (opEditing) {
+            Object.assign(opEditing, { name, role });
+            dirty = false;
+            flashId = "op" + opEditing.id;
+            opDlg.close();
+            renderOps();
+            toast(`${name}-ын өөрчлөлт хадгалагдлаа`);
+            return;
+          }
+          const o = {
+            id: Math.max(...ops.map((x) => x.id)) + 1,
+            name,
+            login,
+            role,
+            last: null,
+            active: true,
+          };
+          ops.push(o);
+          flashId = "op" + o.id;
+          dirty = false;
+          opDlg.close();
+          renderOps();
+          fillAuditFilters();
+          toast(
+            `${name} оператор нэмэгдлээ. Нэвтрэх нэр, нууц үгийг хэрэглэгчид дамжуулна уу.`,
+          );
+        });
+
+        /* =========================================================
+   Audit page
+   ========================================================= */
+        const AF = { range: "7d", op: "all", act: "all", cam: "all", q: "" };
+        let auLimit = 80;
+        const expanded = new Set();
+        const RANGE = {
+          today: ["Өнөөдөр", () => dayStart(Date.now())],
+          "7d": ["7 хоног", () => dayStart(Date.now()) - 6 * DAY],
+          "30d": ["30 хоног", () => dayStart(Date.now()) - 29 * DAY],
+        };
+        function fillAuditFilters() {
+          $("#auOp").innerHTML =
+            '<option value="all">Бүх оператор</option>' +
+            ops
+              .map(
+                (o) =>
+                  `<option value="${o.id}">${esc(o.name)}${o.active ? "" : " (цуцлагдсан)"}</option>`,
+              )
+              .join("");
+          $("#auAct").innerHTML = Object.entries(AGROUPS)
+            .map(([k, l]) => `<option value="${k}">${l}</option>`)
+            .join("");
+          const ids = [
+            ...new Set([
+              ...cams.map((c) => c.id),
+              ...audit.filter((a) => a.cam).map((a) => a.cam),
+            ]),
+          ].sort();
+          $("#auCam").innerHTML =
+            '<option value="all">Бүх камер</option>' +
+            ids
+              .map(
+                (id) =>
+                  `<option value="${id}">${id}${camById(id) ? " · " + esc(camById(id).name) : " (устгагдсан)"}</option>`,
+              )
+              .join("");
+          $("#auOp").value = AF.op;
+          $("#auAct").value = AF.act;
+          $("#auCam").value = AF.cam;
+        }
+        function auditRows() {
+          const from = RANGE[AF.range][1](),
+            q = norm(AF.q);
+          return audit.filter(
+            (a) =>
+              a.t >= from &&
+              (AF.op === "all" || a.op === +AF.op) &&
+              (AF.act === "all" || ACT[a.act].g === AF.act) &&
+              (AF.cam === "all" || a.cam === AF.cam) &&
+              (!q ||
+                norm(
+                  [
+                    opById(a.op)?.name,
+                    ACT[a.act].l,
+                    a.cam,
+                    camById(a.cam)?.name,
+                    a.note,
+                    a.ip,
+                  ].join(" "),
+                ).includes(q)),
+          );
+        }
+        function objHTML(a) {
+          if (a.cam) {
+            const c = camById(a.cam);
+            return `<span class="mono">${a.cam}</span>${c ? " · " + esc(c.name) : ' · <span class="t2">устгагдсан</span>'}`;
+          }
+          return '<span class="t2">—</span>';
+        }
+        function detailHTML(a, i) {
+          if (a.act === "rec_view") {
+            const ps = a.sub.map((s) => s.pos),
+              lo = new Date(Math.min(...ps)),
+              hi = new Date(Math.max(...ps)),
+              dur = (a.sub[a.sub.length - 1].t - a.sub[0].t) / 1000;
+            const sameDay = dayStart(lo) === dayStart(a.t);
+            return `<span>Бичлэгийн ${sameDay ? "" : fmtD(lo) + " "}<span class="mono">${fmtT(lo)}–${fmtT(hi)}</span> хэсгийг ${fmtDur(dur)} тоглуулсан</span>
+      <button class="xbtn" data-act="auX" data-i="${i}" aria-expanded="${expanded.has(a)}" aria-controls="aux${i}">${a.sub.length} алхам${ICON.chev}</button>`;
+          }
+          if (a.act === "login" || a.act === "logout")
+            return `<span class="mono t2">${a.ip}</span>`;
+          return (
+            esc(a.note || "") +
+            (a.act === "login_fail"
+              ? ` · <span class="mono t2">${a.ip}</span>`
+              : "")
+          );
+        }
+        function stepsHTML(a, i) {
+          return `<tr class="sub" id="aux${i}"><td colspan="5"><ol class="steps" aria-label="Бичлэг тоглуулсан алхамууд">${a.sub.map((s) => `<li class="${s.a}"><span class="t">${fmtT(new Date(s.t))}</span><span>${STEP[s.a]}${s.v ? " · " + s.v : ""}</span><span class="p">${s.a === "seek" ? `<span class="mono">${fmtT(new Date(s.from))}</span> → <span class="mono">${fmtT(new Date(s.pos))}</span> руу` : `Бичлэгийн <span class="mono">${fmtT(new Date(s.pos))}</span> байрлалд`}</span></li>`).join("")}</ol></td></tr>`;
+        }
+        function renderAudit() {
+          $("#auRange").innerHTML = Object.entries(RANGE)
+            .map(
+              ([k, [l]]) =>
+                `<button class="chip" data-act="auRange" data-v="${k}" aria-pressed="${AF.range === k}">${l}</button>`,
+            )
+            .join("");
+          const rows = auditRows(),
+            shown = rows.slice(0, auLimit);
+          $("#auCount").textContent = `${rows.length} бүртгэл`;
+          $("#auReset").hidden =
+            AF.range === "7d" &&
+            AF.op === "all" &&
+            AF.act === "all" &&
+            AF.cam === "all" &&
+            !AF.q;
+          $$("#auTbl tbody").forEach((t) => t.remove());
+          const tbl = $("#auTbl");
+          if (!rows.length) {
+            tbl.insertAdjacentHTML(
+              "beforeend",
+              `<tbody><tr><td colspan="5"><div class="empty"><b>Бүртгэл олдсонгүй</b>Сонгосон шүүлтүүрт тохирох үйлдэл алга. Хугацааг уртасгах эсвэл шүүлтүүрийг цэвэрлэнэ үү.<br><button class="btn" data-act="auReset">Шүүлтүүр цэвэрлэх</button></div></td></tr></tbody>`,
+            );
+            $("#auMore").innerHTML = "";
+            return;
+          }
+          let html = "",
+            day = null;
+          shown.forEach((a, i) => {
+            const d = new Date(a.t),
+              k = dayStart(d);
+            if (k !== day) {
+              if (day !== null) html += "</tbody>";
+              day = k;
+              html += `<tbody><tr class="day"><th colspan="5" scope="colgroup">${dayLabel(d)}<span>${fmtD(d)}</span></th></tr>`;
+            }
+            const o = opById(a.op),
+              ac = ACT[a.act];
+            html += `<tr><td class="mono t2">${fmtT(d)}</td>
+      <td><div class="opc"><span class="av" aria-hidden="true">${esc(initials(o.name))}</span><button data-act="auOpPick" data-id="${o.id}" title="Зөвхөн ${esc(o.name)}-ын үйлдлийг харах">${esc(o.name)}</button></div></td>
+      <td><span class="acv ${ac.c || ""}"><i aria-hidden="true"></i>${ac.l}</span></td>
+      <td class="obj">${objHTML(a)}</td><td class="t2">${detailHTML(a, i)}</td></tr>`;
+            if (a.act === "rec_view" && expanded.has(a))
+              html += stepsHTML(a, i);
+          });
+          tbl.insertAdjacentHTML("beforeend", html + "</tbody>");
+          $("#auMore").innerHTML =
+            rows.length > auLimit
+              ? `<button class="btn" data-act="auMore">Дараагийн ${Math.min(80, rows.length - auLimit)} бүртгэлийг харах</button>`
+              : "";
+          tbl._rows = shown;
+        }
+        ["auOp", "auAct", "auCam"].forEach((id) =>
+          $("#" + id).addEventListener("change", (e) => {
+            AF[{ auOp: "op", auAct: "act", auCam: "cam" }[id]] = e.target.value;
+            auLimit = 80;
+            renderAudit();
+          }),
+        );
+        $("#auQ").addEventListener("input", (e) => {
+          AF.q = e.target.value;
+          auLimit = 80;
+          renderAudit();
+        });
+        function exportCSV() {
+          const rows = auditRows(),
+            cell = (v) =>
+              '"' +
+              String(v ?? "")
+                .replace(/"/g, '""')
+                .replace(/<[^>]+>/g, "") +
+              '"';
+          const lines = [
+            [
+              "Огноо",
+              "Цаг",
+              "Оператор",
+              "Нэвтрэх нэр",
+              "Үйлдэл",
+              "Камер",
+              "Дэлгэрэнгүй",
+              "IP",
+            ]
+              .map(cell)
+              .join(","),
+          ];
+          rows.forEach((a) => {
+            const d = new Date(a.t),
+              o = opById(a.op);
+            let det = a.note || "";
+            if (a.act === "rec_view")
+              det = a.sub
+                .map(
+                  (s) =>
+                    `${fmtT(new Date(s.t))} ${STEP[s.a]} @${fmtT(new Date(s.pos))}`,
+                )
+                .join("; ");
+            lines.push(
+              [
+                fmtD(d),
+                fmtT(d),
+                o.name,
+                o.login,
+                ACT[a.act].l,
+                a.cam || "",
+                det,
+                a.ip,
+              ]
+                .map(cell)
+                .join(","),
+            );
+          });
+          const blob = new Blob(["﻿" + lines.join("\r\n")], {
+            type: "text/csv;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob),
+            link = Object.assign(document.createElement("a"), {
+              href: url,
+              download: `aiva-audit-${fmtD(new Date())}.csv`,
+            });
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          toast(`${rows.length} бүртгэлийг CSV файлаар татлаа`);
+        }
+
+        /* =========================================================
+   Dialog helpers, toast
+   ========================================================= */
+        function confirmBox({ title, body, ok, cancel = "Болих" }) {
+          const d = $("#cfDlg");
+          $("#cfT").textContent = title;
+          $("#cfB").innerHTML = body;
+          $("#cfOk").textContent = ok;
+          $("#cfNo").textContent = cancel;
+          d.returnValue = "";
+          d.showModal();
+          $("#cfNo").focus();
+          return new Promise((res) =>
+            d.addEventListener("close", () => res(d.returnValue === "ok"), {
+              once: true,
+            }),
+          );
+        }
+        let lastFocus = null;
+        [camDlg, opDlg].forEach((d) => {
+          d.addEventListener("cancel", (e) => {
+            if (dirty) {
+              e.preventDefault();
+              askDiscard(d);
+            }
+          });
+          d.addEventListener("close", () => {
+            lastFocus?.focus?.();
+          });
+        });
+        async function askDiscard(d) {
+          if (
+            await confirmBox({
+              title: "Хадгалаагүй өөрчлөлтийг орхих уу?",
+              body: "Энэ цонхонд оруулсан мэдээлэл хадгалагдахгүй.",
+              ok: "Орхих",
+              cancel: "Үргэлжлүүлэн засах",
+            })
+          ) {
+            dirty = false;
+            d.close();
+          }
+        }
+        function closeDrawer(d) {
+          if (dirty) askDiscard(d);
+          else d.close();
+        }
+        let toastT;
+        function toast(msg) {
+          const t = $("#toast");
+          t.innerHTML = `<span>${esc(msg)}</span><button class="ib" data-act="toastX" aria-label="Мэдэгдэл хаах" style="width:26px;height:26px"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+          t.hidden = false;
+          clearTimeout(toastT);
+          toastT = setTimeout(() => (t.hidden = true), 5000);
+        }
+
+        /* =========================================================
+   Actions
+   ========================================================= */
+        // user menu: open/close, outside click and Esc close it, focus returns to the button
+        function setMeMenu(open) {
+          $("#meMenu").hidden = !open;
+          $("#meBtn").setAttribute("aria-expanded", open);
+          if (open) $('#meMenu [role="menuitem"]').focus();
+        }
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && !$("#meMenu").hidden) {
+            setMeMenu(false);
+            $("#meBtn").focus();
+          }
+        });
+        document.addEventListener("click", async (ev) => {
+          if (!ev.target.closest(".mewrap") && !$("#meMenu").hidden) setMeMenu(false);
+          const el = ev.target.closest("[data-act]");
+          if (!el) return;
+          const d = el.dataset,
+            a = d.act;
+          if (["camNew", "camEdit", "opNew", "opEdit", "camLive", "csvOpen"].includes(a))
+            lastFocus = el;
+          switch (a) {
+            case "camNew":
+              openCam(null);
+              break;
+            case "camLive":
+              openLive(d.id);
+              break;
+            case "liveClose":
+              liveDlg.close();
+              break;
+            case "liveFull":
+              $("#liveBox").requestFullscreen?.().catch(() => toast("Энд бүтэн дэлгэц боломжгүй байна"));
+              break;
+            case "csvOpen":
+              openCSV();
+              break;
+            case "csvTpl":
+              downloadText("aiva-camera-template.csv", CSV_HEAD + `\nBZD-080,Сансар · Жишээ камер,Баянзүрх › Сансар,47.921200,106.933800,rtsp://admin:${PW_MARK}@10.20.1.80:554/Streaming/Channels/101,https://${STREAM_HOST}/ch30/stream,fight;crowd`);
+              toast("Загвар файл татагдлаа. Жишээ мөрийг өөрийн камерын мэдээллээр солино уу.");
+              break;
+            case "csvSample":
+              loadCSV(CSV_SAMPLE, "жишээ-камерууд.csv");
+              break;
+            case "csvImport":
+              importCSV();
+              break;
+            case "csvEdit": {
+              const x = csvRes[+d.i];
+              x.open = !x.open;
+              if (x.open) x.fields = new Set(x.e.map((y) => y.f));
+              renderCSV(x.open ? `#csve${d.i} input` : `#csva${d.i} button, #csvs${d.i}`);
+              break;
+            }
+            case "csvRemove":
+              Object.assign(csvRes[+d.i], { removed: true, open: false });
+              recheckCSV();
+              renderCSV(`[data-act="csvUndo"][data-i="${d.i}"]`);
+              break;
+            case "csvUndo":
+              csvRes[+d.i].removed = false;
+              recheckCSV();
+              renderCSV(`#csvr${d.i} td`);
+              break;
+            case "camEdit":
+              openCam(d.id);
+              break;
+            case "camSt":
+              CF.st = d.v;
+              renderCams();
+              break;
+            case "camClear":
+              CF.q = "";
+              CF.st = "all";
+              $("#camQ").value = "";
+              renderCams();
+              break;
+            case "camLog":
+              Object.assign(AF, {
+                range: "7d",
+                op: "all",
+                act: "all",
+                cam: d.id,
+                q: "",
+              });
+              $("#auQ").value = "";
+              fillAuditFilters();
+              go("audit");
+              break;
+            case "camDel": {
+              const c = camById(d.id);
+              const ok = await confirmBox({
+                title: `${c.id} камерыг устгах уу?`,
+                ok: "Камер устгах",
+                body: `<b>${esc(c.name)}</b><ul><li>Шууд дүрс болон AIVA шинжилгээ шууд зогсоно.</li><li>Хадгалсан бичлэг 30 хоног үлдэж, дараа нь автоматаар устгагдана.</li><li>Энэ камерын аудит лог хэвээр үлдэнэ.</li></ul>`,
+              });
+              if (!ok) {
+                el.focus();
+                break;
+              }
+              cams = cams.filter((x) => x !== c);
+              renderCams();
+              fillAuditFilters();
+              toast(`${c.id} камер устгагдлаа`);
+              $('#camNew, [data-act="camNew"]')?.focus();
+              break;
+            }
+            case "testRtsp":
+              testRtsp();
+              break;
+            case "stdFill":
+              stdFill();
+              break;
+            case "swapLL": {
+              const t = F.lat.value;
+              F.lat.value = F.lng.value;
+              F.lng.value = t;
+              validateLive();
+              syncPin(true);
+              F.lat.focus();
+              break;
+            }
+            case "dlgClose":
+              closeDrawer(el.closest("dialog"));
+              break;
+
+            case "opNew":
+              openOp(null);
+              break;
+            case "opEdit":
+              openOp(+d.id);
+              break;
+            case "opSt":
+              OF.st = d.v;
+              renderOps();
+              break;
+            case "opLog":
+              Object.assign(AF, {
+                range: "7d",
+                op: d.id,
+                act: "all",
+                cam: "all",
+                q: "",
+              });
+              $("#auQ").value = "";
+              fillAuditFilters();
+              go("audit");
+              break;
+            case "opRevoke": {
+              if (el.getAttribute("aria-disabled") === "true") {
+                toast(el.title);
+                break;
+              }
+              const o = opById(+d.id);
+              const ok = await confirmBox({
+                title: "Операторын эрхийг цуцлах уу?",
+                ok: "Эрх цуцлах",
+                body: `<b>${esc(o.name)}</b> (<span class="mono">${esc(o.login)}</span>)<ul><li>Нэвтрэх эрх нь шууд хаагдаж, одоо нээлттэй холболт нь салгагдана.</li><li>Өмнөх үйлдлүүд нь аудит логт хэвээр үлдэнэ.</li><li>«Эрх цуцлагдсан» жагсаалтаас дахин сэргээж болно.</li></ul>`,
+              });
+              if (!ok) {
+                el.focus();
+                break;
+              }
+              o.active = false;
+              o.revokedAt = Date.now();
+              renderOps();
+              fillAuditFilters();
+              toast(`${o.name}-ын эрх цуцлагдлаа`);
+              break;
+            }
+            case "opRestore": {
+              const o = opById(+d.id);
+              o.active = true;
+              delete o.revokedAt;
+              OF.st = "active";
+              flashId = "op" + o.id;
+              renderOps();
+              fillAuditFilters();
+              toast(`${o.name}-ын эрх сэргээгдлээ`);
+              break;
+            }
+            case "pwToggle":
+              setPwVisible($("#oPw").type === "password");
+              $("#oPw").focus();
+              break;
+
+            case "auRange":
+              AF.range = d.v;
+              auLimit = 80;
+              renderAudit();
+              break;
+            case "auReset":
+              Object.assign(AF, {
+                range: "7d",
+                op: "all",
+                act: "all",
+                cam: "all",
+                q: "",
+              });
+              $("#auQ").value = "";
+              fillAuditFilters();
+              auLimit = 80;
+              renderAudit();
+              break;
+            case "auOpPick":
+              AF.op = d.id;
+              fillAuditFilters();
+              auLimit = 80;
+              renderAudit();
+              break;
+            case "auX": {
+              const r = $("#auTbl")._rows[+d.i];
+              expanded.has(r) ? expanded.delete(r) : expanded.add(r);
+              renderAudit();
+              $(`[data-act="auX"][data-i="${d.i}"]`)?.focus();
+              break;
+            }
+            case "auMore":
+              auLimit += 80;
+              renderAudit();
+              break;
+            case "csv":
+              exportCSV();
+              break;
+            case "toastX":
+              $("#toast").hidden = true;
+              break;
+            case "meMenu":
+              setMeMenu($("#meMenu").hidden);
+              break;
+            case "logout":
+              setMeMenu(false);
+              $("#app").hidden = true;
+              $("#loggedOut").hidden = false;
+              $('#loggedOut [data-act="relogin"]').focus();
+              break;
+            case "relogin":
+              location.reload();
+              break;
+          }
+        });
+
+        /* init */
+        function clock() {
+          const d = new Date();
+          $("#clock").textContent = `${WD[d.getDay()]} · ${fmtD(d)} ${fmtT(d)}`;
+        }
+        clock();
+        setInterval(clock, 1000);
+        $("#main").tabIndex = -1;
+        renderCams();
+        renderOps();
+        fillAuditFilters();
+        route();
+      })();
+    </script>
+  </body>
+</html>

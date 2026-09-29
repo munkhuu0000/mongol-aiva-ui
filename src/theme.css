@@ -44,4 +44,52 @@
   /* --- Үндсэн үйлдэл ------------------------------------------- */
   --color-primary: #0f172a;
   --color-primary-fg: #ffffff;
+
+  /* --- Видео, агшин зураг дээр давхарлах ----------------------- */
+  /* Горимоос үл хамааран бараан хэвээр — дэвсгэр нь үргэлж зураг. */
+  --color-overlay: #0f172a;
+  --color-overlay-fg: #f1f5f9;
+  /* Илрүүлсэн объектын хүрээ, бүсийн хил. */
+  --color-detection: #facc15;
+  --color-detection-fg: #0f172a;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Бараан горим — <html class="dark">.
+
+   html дээр тавих ёстой: DropdownMenu, Select-ийн цэс body руу
+   (portal) зурагддаг тул доторх div дээр тавибал цэс цагаан гарна.
+
+   Зөвхөн токенуудыг солино — компонент бүр автоматаар дагана.
+   ink-inverse, overlay, detection солигдохгүй: тэдгээр нь өнгөт
+   дэвсгэр (bg-danger) эсвэл зураг дээр байрладаг.
+   ────────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  color-scheme: dark;
+
+  --color-surface: #1c1c1f;
+  --color-surface-muted: #111113;
+  --color-surface-accent: #1e2a44;
+
+  --color-ink: #f4f4f5;
+  --color-ink-muted: #a1a1aa;
+
+  --color-line: #2e2e33;
+  --color-line-soft: #26262a;
+
+  --color-offline: #71717a;
+
+  --color-danger: #ef4444;
+  --color-danger-soft: #2a1215;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #2a1f0b;
+  --color-info: #3b82f6;
+  --color-info-soft: #111c33;
+
+  /* Сонгосон зүйл цэнхрээр — бараан дэвсгэр дээр хар primary харагдахгүй. */
+  --color-primary: #2563eb;
+  --color-primary-fg: #ffffff;
 }

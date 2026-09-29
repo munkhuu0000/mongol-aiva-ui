@@ -13,7 +13,7 @@ const alertVariants = cva(
         danger: "bg-danger-soft text-danger",
         // Газрын зураг, видео дээр давхарлаж харуулах бараан хувилбар —
         // ямар ч дэвсгэр дээр уншигдана.
-        overlay: "bg-ink/80 text-xs leading-snug text-line-soft backdrop-blur-sm",
+        overlay: "bg-overlay/80 text-xs leading-snug text-overlay-fg backdrop-blur-sm",
       },
     },
     defaultVariants: {

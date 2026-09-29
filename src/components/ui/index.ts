@@ -1,5 +1,17 @@
 export { Button, buttonVariants, type ButtonProps } from "./button";
 export { SettingsButton, EditButton, type IconButtonProps } from "./icon-buttons";
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  type DropdownMenuItemProps,
+} from "./dropdown-menu";
+export { Select, type SelectOption, type SelectProps } from "./select";
+export { Toggle, toggleVariants, type ToggleProps } from "./toggle";
+export { FilterChip, type FilterChipProps, type FilterOption } from "./filter-chip";
 export { Badge, badgeVariants, type BadgeProps } from "./badge";
 export {
   Card,

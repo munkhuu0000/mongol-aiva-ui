@@ -27,10 +27,11 @@ export function Header({
       )}
       {...props}
     >
+      {/* Зай багасвал эхлээд subtitle тасарна — гарчиг сүүлд. */}
       <div className="flex min-w-0 items-baseline gap-2">
-        <h1 className="truncate text-lg font-semibold text-ink">{title}</h1>
+        <h1 className="max-w-full shrink-0 truncate text-lg font-semibold text-ink">{title}</h1>
         {subtitle && (
-          <span className="shrink-0 text-xs text-ink-muted">{subtitle}</span>
+          <span className="min-w-0 truncate text-xs text-ink-muted">{subtitle}</span>
         )}
       </div>
 
