@@ -65,6 +65,9 @@ import {
   type EventType,
 } from "../src";
 
+// Толгой дээрх хувилбар — package.json-оос, гараар шинэчлэхгүй.
+import { version } from "../package.json";
+
 // Жишээ агшин зургууд — demo.mp4-ийн frame-ууд.
 import snapCrowd from "./assets/snap-crowd.jpg";
 import snapIntrusion from "./assets/snap-intrusion.jpg";
@@ -297,7 +300,7 @@ export function App() {
         subtitle={`${TOTAL} компонент`}
         actions={
           <>
-            <Badge variant="outline">v0.1.0</Badge>
+            <Badge variant="outline">v{version}</Badge>
             <Toggle
               size="icon-sm"
               variant="outline"

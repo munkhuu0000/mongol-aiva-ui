@@ -42,22 +42,37 @@ UbCam болон бусад төсөлд импортлож ашиглана.
 
 ## Суулгах
 
-Эхлээд энэ repo-г build хийнэ — импортлох төсөл `dist/`-ийг уншдаг:
+Гурван арга бий. Ихэнх тохиолдолд **А**-г хэрэглэнэ.
+
+### А. GitHub-аас, хувилбараар — үндсэн арга
 
 ```bash
-cd mongol-aiva-ui
-npm install
-npm run build
+npm install github:munkhuu0000/mongol-aiva-ui#v0.2.0
 ```
 
-Дараа нь импортлох төсөлдөө гурван аргын аль нэгээр:
+`package.json`-д ингэж бичигдэнэ:
 
-### А. Холбоосоор — энэ санг зэрэг хөгжүүлж байх үед
+```json
+"mongol-aiva-ui": "github:munkhuu0000/mongol-aiva-ui#v0.2.0"
+```
 
-Санд оруулсан өөрчлөлт шууд орж ирнэ.
+- `#v0.2.0` — тэр tag дээр **түгжигдэнэ**. Энэ санд шинэ commit гарсан ч
+  таны төсөл өөрчлөгдөхгүй — шинэ хувилбар руу шилжихдээ tag-ийг л солино.
+- Суулгах үед `prepare` скрипт `dist/`-ийг автоматаар бүтээнэ.
+- Суусны дараа `node_modules/mongol-aiva-ui/` дотор бүтэн хуулбар үүснэ —
+  энэ санг компьютер дээрээс устгасан ч таны төсөл ажилласаар байна.
+  Харин **GitHub дээрх repo-г устгавал** дахин `npm install` хийхэд алдаа
+  гарна. Хаах бол устгахын оронд Archive хий.
+
+Хувилбарууд: <https://github.com/munkhuu0000/mongol-aiva-ui/tags>
+
+### Б. Холбоосоор — энэ санг зэрэг хөгжүүлж байх үед
+
+Санд оруулсан өөрчлөлт шууд орж ирнэ — push, tag хүлээхгүй.
 
 ```bash
 # энэ repo-д — өөрчлөх бүрд dist/-ийг дахин бүтээнэ
+npm install
 npm run watch
 
 # импортлох төсөлд (замыг өөрийнхөөрөө)
@@ -77,25 +92,23 @@ export default defineConfig({
 Үгүй бол React хоёр хувь ачаалагдаж, хуудас хоосон гарна
 (`Cannot read properties of null (reading 'useContext')`).
 
-### Б. Tarball — сервер рүү гаргах, бусадтай хуваалцах үед
+Энэ арга нь хавтас руу заасан холбоос тул энэ санг устгавал импортлосон
+төсөл шууд эвдэрнэ. Хөгжүүлж дуусаад **А** руу буцаа.
+
+### В. Tarball — GitHub-гүй орчинд
 
 ```bash
 # энэ repo-д
-npm run build && npm pack          # → mongol-aiva-ui-0.1.0.tgz
+npm install
+npm run build && npm pack          # → mongol-aiva-ui-<хувилбар>.tgz
 
-# импортлох төсөлд
-npm install ../mongol-aiva-ui/mongol-aiva-ui-0.1.0.tgz
+# импортлох төсөлд — tgz-ийг төсөл дотроо хадгалж commit хийвэл
+# бусад сангаас бүрэн хамааралгүй болно
+mkdir -p vendor && cp ../mongol-aiva-ui/mongol-aiva-ui-*.tgz vendor/
+npm install ./vendor/mongol-aiva-ui-0.2.0.tgz
 ```
 
-`dedupe` хэрэггүй. Өөрчлөлт бүрийн дараа `build` → `pack` → `install`-ийг давтана.
-
-### В. Git-ээс
-
-`prepare` скрипт суулгах үед `dist/`-ийг автоматаар бүтээнэ:
-
-```bash
-npm install git+ssh://git@github.com/<байгууллага>/mongol-aiva-ui.git
-```
+`dedupe` хэрэггүй. Шинэчлэх бүрд `build` → `pack` → `install`-ийг давтана.
 
 ---
 
@@ -331,3 +344,26 @@ Showcase-ийг хоёр газар байршуулах тохиргоо бий
 - **Vercel** — `vercel.json`: `npm run build:showcase` → `showcase-dist/`.
 - **GitHub Pages** — `.github/workflows/pages.yml`: `main` руу push хийх бүрт.
   Нэг удаа: repo → Settings → Pages → Source: "GitHub Actions".
+
+### Шинэ хувилбар гаргах
+
+Импортлох төслүүд tag дээр түгжигддэг тул шинэ компонент нэмсний дараа
+хувилбар гаргаж байж тэнд орно:
+
+```bash
+npm run typecheck && npm run build        # алдаагүйг шалгана
+npm version 0.3.0 --no-git-tag-version    # package.json, package-lock.json
+git commit -am "v0.3.0: <юу нэмэгдсэн>"
+git tag v0.3.0
+git push && git push origin v0.3.0
+```
+
+Дараа нь импортлох төсөлд:
+
+```bash
+npm install github:munkhuu0000/mongol-aiva-ui#v0.3.0
+```
+
+Дугаарлалт: шинэ компонент, prop нэмбэл дунд тоо (`0.2.0` → `0.3.0`),
+зөвхөн алдаа засвал сүүлийн тоо (`0.2.0` → `0.2.1`). Одоо байгаа prop-ыг
+устгах, нэрийг нь солих үед импортлох төслүүдийн кодыг шалгаарай.
